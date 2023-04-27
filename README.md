@@ -18,5 +18,34 @@ Folder structure:
 │   └── wk_runner_script.py   # python scripts
 └── README.md
 
+```
+
+## How to get rollin'
+
+* Get the full data set here: [Princeton Website](https://mag-net.princeton.edu/)
+* Extract the material folders into data/input/raw such that you get a folder structure like
 
 ```
+data/
+├── input
+│   ├── processed
+│   └── raw
+│       ├── 3C90
+│       │   ├── B_waveform[T].csv
+│       │   ├── Frequency[Hz].csv
+│       │   ├── H_waveform[Am-1].csv
+│       │   ├── Temperature[C].csv
+│       │   └── Volumetric_losses[Wm-3].csv
+│       ├── 3C94
+│       │   ├── B_waveform[T].csv
+│       │   ├── Frequency[Hz].csv
+│       │   ├── H_waveform[Am-1].csv
+│       │   ├── Temperature[C].csv
+│       │   └── Volumetric_losses[Wm-3].csv
+..      ..      ..
+
+```
+
+* Execute `notebooks/1.0-wk-process_raw.ipynb`, the processed pickle file will land in `data/input/processed`
+* Alternatively, ask Wilhelm for the processed file
+
