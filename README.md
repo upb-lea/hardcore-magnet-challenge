@@ -49,3 +49,6 @@ data/
 * Execute `notebooks/1.0-wk-process_raw.ipynb`, the processed pickle file will land in `data/input/processed`
 * Alternatively, ask Wilhelm for the processed file
 
+## Tasks during the project
+Work packages are tracked at [LEA cloud](https://cloud.lea-com.upb.de/index.php/apps/deck/#/board/47)
+
