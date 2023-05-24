@@ -1,0 +1,159 @@
+Ferroxcube - 3C90: measurement details
+
+Core information:
+
+3C90 --- TX-25-15-10 --- Ae 4.89e-05 --- Ve 2.9428e-06 --- le 0.06018 --- CoreN 1 --- N1 7 --- N2 7 --- Dataset 1
+
+Setup information:
+
+2022-07-23 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1 (T-Type inverter with bidirectional switches and 3 drivers); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-05
+
+
+
+Ferroxcube - 3C94: measurement details
+
+Core information:
+
+3C94 --- TX-20-10-7 --- Ae 3.36e-05 --- Ve 1.465e-06 --- le 0.0436 --- CoreN 1 --- N1 7 --- N2 7 --- Dataset 1
+
+Setup information:
+
+2022-07-28 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1 (T-Type inverter with bidirectional switches and 3 drivers); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-06
+
+
+
+Ferroxcube - 3E6: measurement details
+
+Core information:
+
+3E6 --- TX-22-14-6.4 --- Ae 2.48e-05 --- Ve 1.34e-06 --- le 0.0542 --- CoreN 1 --- N1 4 --- N2 4 --- Dataset 1
+
+Setup information:
+
+2022-10-11 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1.1 (T-Type inverter with bidirectional switch and 3 drivers; dead time 70 ns; decoupling capacitor added); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-13
+
+
+
+Ferroxcube - 3F4: measurement details
+
+Core information:
+
+3F4 --- E-32-6-20-R --- Ae 0.00013 --- Ve 4.56e-06 --- le 0.0351 --- CoreN 1 --- N1 5 --- N2 5 --- Dataset 1
+
+Setup information:
+
+2022-09-07 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1.1 (T-Type inverter with bidirectional switches and 3 drivers; closer decoupling capacitor); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-05
+
+
+
+Fair-Rite - 77: measurement details
+
+Core information:
+
+77 --- 0014 --- Ae 4e-05 --- Ve 2.44e-06 --- le 0.062 --- CoreN 1 --- N1 7 --- N2 7 --- Dataset 1
+
+Setup information:
+
+2022-08-22 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1 (T-Type inverter with bidirectional switches and 3 drivers; deadtime 70 ns); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-06
+
+
+
+Fair-Rite - 78: measurement details
+
+Core information:
+
+78 --- 0076 --- Ae 5.2e-05 --- Ve 2.83e-06 --- le 0.054 --- CoreN 1 --- N1 6 --- N2 6 --- Dataset 1
+
+Setup information:
+
+2022-08-24 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1 (T-Type inverter with bidirectional switches and 3 drivers; dead time 70 ns); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-06
+
+
+
+TDK - N27: measurement details
+
+Core information:
+
+N27 --- R20.0X10.0X7.0 --- Ae 3.363e-05 --- Ve 1.465e-06 --- le 0.04355 --- CoreN 1 --- N1 8 --- N2 8 --- Dataset 1
+
+Setup information:
+
+2022-10-03 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1.1 (T-Type inverter with bidirectional switch and 3 drivers; dead time 70 ns; decoupling capacitor added); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-06
+
+
+
+TDK - N30: measurement details
+
+Core information:
+
+N30 --- 22.1X13.7X6.35 --- Ae 2.617e-05 --- Ve 1.417e-06 --- le 0.05415 --- CoreN 1 --- N1 6 --- N2 6 --- Dataset 1
+
+Setup information:
+
+2022-10-06 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1.1 (T-Type inverter with bidirectional switch and 3 drivers; dead time 70 ns; decoupling capacitor added); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-26
+
+
+
+TDK - N49: measurement details
+
+Core information:
+
+N49 --- R16.0X9.6X6.3 --- Ae 1.973e-05 --- Ve 7.6e-07 --- le 0.03852 --- CoreN 1 --- N1 10 --- N2 10 --- Dataset 1
+
+Setup information:
+
+2022-08-12 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1 (T-Type inverter with bidirectional switches and 3 drivers); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-04
+
+
+
+TDK - N87: measurement details
+
+Core information:
+
+N87 --- R34.0X20.5X12.5 --- Ae 8.26e-05 --- Ve 6.778e-06 --- le 0.08206 --- CoreN 1 --- N1 5 --- N2 5 --- Dataset 5
+
+Setup information:
+
+2022-07-14 --- Princeton Power Electronics Research Lab; Andlinger Center 112; Princeton University --- Power stage: Prototype v1 (T-Type inverter with bidirectional switches and 3 drivers); DSP: F28379D; Power supplies: BK Precision XLN60026; Series capacitor: Film 100 V 100 uF --- Signal generator: RIGOL DG4102; Power amplifier: Amplifier Research 25A250AM6; Series capacitor: Film 100 V 100 uF --- Configuration: DC current added to the primary winding (2 windings method); Circuit: Siglent SPD3303X-E DC power supply controlled in current mode directly, CM choke, DM inductor and auxiliary transformer to compensate the voltage for the DC bias circuit --- Oil Bath: Mineral Oil; Water Heater: ANOVA nano; Cooling method: Magnetic stirrer --- Voltage Measurement: P6139A; Termination: 1e6 ohm; Bandwidth: 20e6 Hz; Current Measurement: Shunt: T&M Research Products 0.983 ohm W-5-10-1STUD; Coaxial: RG 58/U with CM choke; Termination: 50 ohm; Bandwidth: 20e6 Hz --- Oscilloscope: Tektronix DPO4054; Record length: 100000; Horizontal scale: 10e-6 s; Ch1: None; Ch2: Voltage; Ch3: Current; Ch4: None; Trigger: Edge CH2 Positive Flank; Acquisition mode: Normal; Hi-Res mode implemented in Python directly (averaging every 10 samples to get 10000 samples in total)
+
+Data-processing information:
+
+Data discarded: Voltage below 1 V; Current below 0.01 A; Clipped signals for more than 0.1 percent of the sample length in a row; with a voltage THD above 5 percent; With losses below 0.001 W; With a quality factor above 100 --- Frequency estimation based on the power spectral density estimate via Welchs method using the voltage sequence with a frequency resolution of 10 Hz for a range of 2000 Hz around the commanded frequency; datapoints are discarded if the frequency is more than 1500 Hz away from the commanded value --- Saving a single cycle by averaging all switching cycles but the last one if incomplete based on the frequency algorithm; using cubic spline interpolation with 1024 points for the waveforms; the average voltage is removed; datapoints an averaged normalized RMS error of all cycles of the voltage/current with respect to the averaged voltage/current from all cycles above 10 percent are removed --- Flux estimated based on the integral of the voltage (the average flux is removed as the initial value is not known); Loss density calculated as the average product of the voltage and current (average voltage removed beforehand) divided by the effective volume; Duty cycle estimated by dividing the peak to peak voltage in 100 equally spaced thresholds and checking the percentage of the sequence that is above this threshold; the max and min 1 percent of the waveform is removed first --- 2022-10-04
+
+
