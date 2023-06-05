@@ -1,5 +1,9 @@
+# file extensions
 *.mp4
 *.pkl.gz
 *.pkl
 *.csv
+
+# folders
+.vscode/
 
