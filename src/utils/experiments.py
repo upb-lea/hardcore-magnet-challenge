@@ -63,16 +63,16 @@ def get_stratified_fold_indices(df, k):
     )
     return df.kfold_tst_lbl
 
-def form_factor(b): 
+def form_factor(x): 
     """
-    definition:      kf = rms / mean(abs)
+    definition:      kf = rms(x) / mean(abs(x))
     for ideal sine:  np.pi/(2*np.sqrt(2))
     """
-    return np.sqrt(np.mean(b**2, axis=1))  / np.mean(np.abs(b), axis=1)
+    return np.sqrt(np.mean(x**2, axis=1))  / np.mean(np.abs(x), axis=1)
 
-def crest_factor(b): 
+def crest_factor(x): 
     """
-    definition:      ks = rms / max()
+    definition:      ks = rms(x) / max(x)
     for ideal sine:  np.sqrt(2) 
     """
-    return np.max(np.abs(b), axis=1)  / np.sqrt(np.mean(b**2, axis=1))
+    return np.max(np.abs(x), axis=1)  / np.sqrt(np.mean(x**2, axis=1))
