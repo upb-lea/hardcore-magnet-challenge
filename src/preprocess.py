@@ -2,9 +2,7 @@
 a more compact format, on which modeling will build upon. """
 import pandas as pd
 from pathlib import Path
-
-DATA_SOURCE = Path.cwd().parent / "data" / "input" / "raw"
-PROC_SOURCE = DATA_SOURCE.parent / "processed"
+from utils.experiments import DATA_SOURCE, PROC_SOURCE
 
 
 data_d = {}
