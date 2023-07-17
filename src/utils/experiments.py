@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 
 def shuffle_phases(mat):
@@ -72,7 +73,23 @@ def form_factor(x):
 
 def crest_factor(x): 
     """
-    definition:      ks = rms(x) / max(x)
+    definition:      kc = rms(x) / max(x)
     for ideal sine:  np.sqrt(2) 
     """
     return np.max(np.abs(x), axis=1)  / np.sqrt(np.mean(x**2, axis=1))
+
+def bool_filter_sine(b, rel_kf=0.005, rel_kc=0.005):
+    kf_sine = np.pi/(2*np.sqrt(2))
+    kc_sine = np.sqrt(2)
+
+    filter_bool = [True] * b.shape[0]
+
+    statements = [list(form_factor(b) < kf_sine * (1 + rel_kf)),
+                  list(form_factor(b) > kf_sine * (1 - rel_kf)),
+                  list(crest_factor(b) < kc_sine * (1 + rel_kc)),
+                  list(crest_factor(b) > kc_sine * (1 - rel_kc))]
+
+    for statement in statements:
+        filter_bool = [a and zr for a, zr in zip(filter_bool, statement)]
+
+    return filter_bool
