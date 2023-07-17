@@ -35,22 +35,21 @@ def main():
 
         # training result container
         results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(pred=0)
+        x_cols = [c for c in mat_df_proc if c not in ["ploss", "kfold"]]
 
         for kfold_lbl, test_fold_df in mat_df_proc.groupby("kfold"):
-            train_fold_df = mat_df_proc.query("kfold != @kfold_lbl").reset_index(
-                drop=True
+            train_fold_df = (
+                mat_df_proc.query("kfold != @kfold_lbl")
+                .reset_index(drop=True)
+                .drop(columns="kfold")
             )
             assert len(train_fold_df) > 0, "empty dataframe error"
             y = train_fold_df.pop("ploss")
-            X = train_fold_df
+            X = train_fold_df.loc[:, x_cols]
 
             mdl = Ridge()  # LinearRegression()
             mdl.fit(X.to_numpy(), y.to_numpy())
-            pred = mdl.predict(
-                test_fold_df.loc[
-                    :, [c for c in test_fold_df if c != "ploss"]
-                ].to_numpy()
-            )
+            pred = mdl.predict(test_fold_df.loc[:, x_cols].to_numpy())
             results_df.loc[results_df.kfold == kfold_lbl, "pred"] = pred
 
         # book keeping
