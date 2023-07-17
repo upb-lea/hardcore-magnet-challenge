@@ -37,7 +37,7 @@ def main():
         results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(pred=0)
 
         for kfold_lbl, test_fold_df in mat_df_proc.groupby("kfold"):
-            train_fold_df = mat_df_proc.query("kfold == @kfold_lbl").reset_index(
+            train_fold_df = mat_df_proc.query("kfold != @kfold_lbl").reset_index(
                 drop=True
             )
             assert len(train_fold_df) > 0, "empty dataframe error"
