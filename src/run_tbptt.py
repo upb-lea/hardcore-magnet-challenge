@@ -72,7 +72,7 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit):
 def main():
     device = torch.device("cpu")
     ds = pd.read_pickle(
-        PROC_SOURCE / "3C90.pkl.gz" if DEBUG else "ten_materials.pkl.gz"
+        PROC_SOURCE / "3C90.pkl.gz" if DEBUG else PROC_SOURCE / "ten_materials.pkl.gz"
     )
 
     
