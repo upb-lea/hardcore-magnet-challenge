@@ -1,3 +1,4 @@
+"""Run linear regression with regularization training"""
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression, Ridge
@@ -36,7 +37,7 @@ def main():
         # training result container
         results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(pred=0)
         x_cols = [c for c in mat_df_proc if c not in ["ploss", "kfold"]]
-
+        print(x_cols)
         for kfold_lbl, test_fold_df in mat_df_proc.groupby("kfold"):
             train_fold_df = (
                 mat_df_proc.query("kfold != @kfold_lbl")
