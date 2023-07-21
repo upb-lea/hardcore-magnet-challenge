@@ -265,7 +265,7 @@ def main():
     for i, logs in enumerate(experiment_logs):
         print("Seed", i)
         mat_lbls = ['3C90'] if DEBUG else ds.material.unique().tolist()
-        print(pd.DataFrame({k: logs[k] for k in mat_lbls}).T)
+        print(pd.DataFrame({k: logs[k] for k in mat_lbls if k in logs}).T)
 
 
 if __name__ == "__main__":
