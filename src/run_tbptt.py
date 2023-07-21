@@ -264,7 +264,7 @@ def main():
     print("Overall Score")
     for i, logs in enumerate(experiment_logs):
         print("Seed", i)
-        mat_lbls = ['3C90'] if DEBUG else ds.material.unique().to_list()
+        mat_lbls = ['3C90'] if DEBUG else ds.material.unique().tolist()
         print(pd.DataFrame({k: logs[k] for k in mat_lbls}).T)
 
 
