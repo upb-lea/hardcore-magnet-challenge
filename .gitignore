@@ -6,4 +6,7 @@
 
 # folders
 .vscode/
-
+.idea/
+venv/
+.ipynb_checkpoints/
+__pycache__/
