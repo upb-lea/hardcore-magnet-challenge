@@ -93,3 +93,19 @@ def bool_filter_sine(b, rel_kf=0.005, rel_kc=0.005):
         filter_bool = [a and zr for a, zr in zip(filter_bool, statement)]
 
     return filter_bool
+
+def bool_filter_triangular(b, rel_kf=0.005, rel_kc=0.005):
+    kf_triangular = 2/np.sqrt(3)
+    kc_triangular = np.sqrt(3)
+
+    filter_bool = [True] * b.shape[0]
+
+    statements = [list(form_factor(b) < kf_triangular * (1 + rel_kf)),
+                  list(form_factor(b) > kf_triangular * (1 - rel_kf)),
+                  list(crest_factor(b) < kc_triangular * (1 + rel_kc)),
+                  list(crest_factor(b) > kc_triangular * (1 - rel_kc))]
+
+    for statement in statements:
+        filter_bool = [a and zr for a, zr in zip(filter_bool, statement)]
+
+    return filter_bool
