@@ -28,6 +28,10 @@ def get_bh_integral(df):
         * np.abs(np.sum(b * (np.roll(h, 1, axis=1) - np.roll(h, -1, axis=1)), axis=1))
     )  # shoelace formula
 
+def get_bh_integral_from_two_mats(freq, b, h):
+    """ b and h are shape (#samples, #timesteps)"""
+    h += 100
+    return freq.ravel() * 0.5 * np.abs(np.sum(b * (np.roll(h, 1, axis=1) - np.roll(h, -1, axis=1)), axis=1))
 
 def get_stratified_fold_indices(df, k):
     """Given a Pandas Dataframe df, return a Pandas Series with the kfold labels for the test set.
