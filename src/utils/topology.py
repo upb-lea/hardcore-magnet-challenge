@@ -78,3 +78,71 @@ class ExplEulerCell(nn.Module):
         all_input = torch.cat([norm_freq, inp[:, 1:], hidden], dim=1)
         out = prev_out + self.subsample_factor/(freq*1024) * self.f(all_input)
         return prev_out, out
+    
+class TemporalBlock(nn.Module):
+    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, 
+                 residual=True, double_layered=True, dropout=0.2):
+        super(TemporalBlock, self).__init__()
+        padding = ((kernel_size-1) // 2) * dilation
+        self.conv1 = nn.utils.weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride,
+                                                    padding=padding, dilation=dilation, 
+                                                    padding_mode='circular'))
+        self.relu1 = nn.ReLU()
+        self.dropout1 = nn.Dropout1d(dropout)
+        if double_layered:
+            self.relu2 = nn.ReLU()
+            self.conv2 = nn.utils.weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride,
+                                                        padding=padding, dilation=dilation, 
+                                                        padding_mode='circular'))
+            self.dropout2 = nn.Dropout1d(dropout)
+            self.net = nn.Sequential(self.conv1, self.relu1, self.dropout1,
+                                     self.conv2, self.relu2, self.dropout2)
+        else:
+            self.net = nn.Sequential(self.conv1, self.relu1, self.dropout1)
+        self.relu = nn.ReLU()
+        self.residual = residual
+        if residual:
+            self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
+        else:
+            self.downsample = None
+        self.double_layered = double_layered
+        self.init_weights()
+
+    def init_weights(self):
+        self.conv1.weight.data.normal_(0, 0.01)
+        if self.double_layered:
+            self.conv2.weight.data.normal_(0, 0.01)
+        if self.downsample is not None:
+            self.downsample.weight.data.normal_(0, 0.01)
+
+    def forward(self, x):
+        out = self.net(x)
+        if self.residual:
+            res = x if self.downsample is None else self.downsample(x)
+            y = torch.clip(out + res, -10, 10)  # out += res is not allowed, it would become an inplace op, weird
+            y = self.relu(y)
+        else:
+            y = out
+        return y
+    
+class TemporalAcausalConvNet(nn.Module):
+    def __init__(self, num_inputs, layer_cfg=None):
+        super().__init__()
+        layer_cfg = layer_cfg or {'f': [{'units': 64}, {'units': 1}]}
+        layers = []
+        dilation_offset = layer_cfg.get("starting_dilation_rate", 0)  # >= 0
+        for i, l_cfg in enumerate(layer_cfg['f']):
+            kernel_size = l_cfg.get('kernel_size', 7)
+            dropout_rate = layer_cfg.get("dropout", 0.0)
+            dilation_size = 2 ** (i + dilation_offset)
+            in_channels = num_inputs if i == 0 else layer_cfg['f'][i-1]['units']
+            layers += [TemporalBlock(in_channels, l_cfg['units'], kernel_size, stride=1, dilation=dilation_size,
+                                     residual=layer_cfg.get('residual', False),
+                                     double_layered=layer_cfg.get("double_layered", False),
+                                     dropout=dropout_rate),
+                       ]
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
