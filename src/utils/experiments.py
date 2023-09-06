@@ -93,21 +93,32 @@ def crest_factor(x):
     return np.max(np.abs(x), axis=1) / np.sqrt(np.mean(x**2, axis=1))
 
 
-def bool_filter_sine(b, rel_kf=0.005, rel_kc=0.005):
+
+def bool_filter_sine(b, rel_kf=0.005, rel_kc=0.005, rel_0_dev=0.1):
+    """
+    b: input flux density (nxm)-array with n m-dimensional flux density waveforms
+    rel_kf: (allowed) relative deviation of the form factor for sine classification
+    rel_kc: (allowed) relative deviation of the crest factor for sine classification
+    rel_0_dev: (allowed) relative deviation of the first value from zero (normalized on the peak value)
+    """
     kf_sine = np.pi / (2 * np.sqrt(2))
     kc_sine = np.sqrt(2)
 
     filter_bool = [True] * b.shape[0]
 
     statements = [
-        list(form_factor(b) < kf_sine * (1 + rel_kf)),
-        list(form_factor(b) > kf_sine * (1 - rel_kf)),
-        list(crest_factor(b) < kc_sine * (1 + rel_kc)),
-        list(crest_factor(b) > kc_sine * (1 - rel_kc)),
+        list(form_factor(b) < kf_sine * (1 + rel_kf)),  # form factor based checking
+        list(form_factor(b) > kf_sine * (1 - rel_kf)),  # form factor based checking
+        list(crest_factor(b) < kc_sine * (1 + rel_kc)), # crest factor based checking
+        list(crest_factor(b) > kc_sine * (1 - rel_kc)), # crest factor based checking
+        list(b[:, 0] < np.max(b, axis=1) * rel_0_dev),  # starting value based checking
+        list(b[:, 0] > -np.max(b, axis=1) * rel_0_dev), # starting value based checking
     ]
 
     for statement in statements:
         filter_bool = [a and zr for a, zr in zip(filter_bool, statement)]
+
+    
 
     return filter_bool
 
