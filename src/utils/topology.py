@@ -78,3 +78,118 @@ class ExplEulerCell(nn.Module):
         all_input = torch.cat([norm_freq, inp[:, 1:], hidden], dim=1)
         out = prev_out + self.subsample_factor/(freq*1024) * self.f(all_input)
         return prev_out, out
+    
+class TemporalBlock(nn.Module):
+    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, 
+                 residual=True, double_layered=True, dropout=0.2, act_func=None):
+        super(TemporalBlock, self).__init__()
+        padding = ((kernel_size-1) // 2) * dilation
+        self.conv1 = nn.utils.weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride,
+                                                    padding=padding, dilation=dilation, 
+                                                    padding_mode='circular'))
+        self.relu1 = ACTIVATION_FUNCS.get(act_func, nn.Identity)()
+        self.dropout1 = nn.Dropout1d(dropout)
+        if double_layered:
+            self.relu2 = nn.Identity()
+            self.conv2 = nn.utils.weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride,
+                                                        padding=padding, dilation=dilation, 
+                                                        padding_mode='circular'))
+            self.dropout2 = nn.Dropout1d(dropout)
+            self.net = nn.Sequential(self.conv1, self.relu1, self.dropout1,
+                                     self.conv2, self.relu2, self.dropout2)
+        else:
+            self.net = nn.Sequential(self.conv1, self.relu1, self.dropout1)
+        self.relu = nn.ReLU()
+        self.residual = residual
+        if residual:
+            self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
+        else:
+            self.downsample = None
+        self.double_layered = double_layered
+        self.init_weights()
+
+    def init_weights(self):
+        self.conv1.weight.data.normal_(0, 0.01)
+        if self.double_layered:
+            self.conv2.weight.data.normal_(0, 0.01)
+        if self.downsample is not None:
+            self.downsample.weight.data.normal_(0, 0.01)
+
+    def forward(self, x):
+        out = self.net(x)
+        if self.residual:
+            res = x if self.downsample is None else self.downsample(x)
+            y = torch.clip(out + res, -10, 10)  # out += res is not allowed, it would become an inplace op, weird
+            y = self.relu(y)
+        else:
+            y = out
+        return y
+    
+class TemporalAcausalConvNet(nn.Module):
+    def __init__(self, num_inputs, layer_cfg=None):
+        super().__init__()
+        layer_cfg = layer_cfg or {'f': [{'units': 32, 'act_func': 'tanh'}, #{'units': 6, 'act_func': 'tanh'}, 
+                                        {'units': 1}]}
+        layers = []
+        dilation_offset = layer_cfg.get("starting_dilation_rate", 0)  # >= 0
+        for i, l_cfg in enumerate(layer_cfg['f']):
+            kernel_size = l_cfg.get('kernel_size', 7)
+            dropout_rate = layer_cfg.get("dropout", 0.0)
+            dilation_size = 2 ** (i + dilation_offset)
+            in_channels = num_inputs if i == 0 else layer_cfg['f'][i-1]['units']
+            layers += [TemporalBlock(in_channels, l_cfg['units'], kernel_size, stride=1, dilation=dilation_size,
+                                     residual=layer_cfg.get('residual', False),
+                                     double_layered=layer_cfg.get("double_layered", False),
+                                     dropout=dropout_rate, act_func=l_cfg.get('act_func', nn.Identity)),
+                       ]
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        y = self.network(x)
+        # subtract mean across time domain
+        y = y - y.mean(dim=-1).unsqueeze(-1)
+        return y
+
+class TCNWithScalarsAsBias(nn.Module):
+    def __init__(self, num_input_scalars, num_input_ts=1, tcn_layer_cfg=None, scalar_layer_cfg=None):
+        super().__init__()
+        self.num_input_ts = num_input_ts
+        self.x_idx_for_ts = [-a for a in range(1, num_input_ts+1)]
+        tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': num_input_scalars+2, 'act_func': 'tanh'}, 
+                                                {'units': 24, 'act_func': 'tanh'}, 
+                                                {'units': 1}]} 
+        scalar_layer_cfg = scalar_layer_cfg or {'f': [{'units': num_input_scalars, 'act_func': 'tanh'}]}  # only one layer
+        tcn_layers = []
+        dilation_offset = tcn_layer_cfg.get("starting_dilation_rate", 0)  # >= 0
+        for i, l_cfg in enumerate(tcn_layer_cfg['f']):
+            kernel_size = l_cfg.get('kernel_size', 7)
+            dropout_rate = tcn_layer_cfg.get("dropout", 0.0)
+            dilation_size = 2 ** (i + dilation_offset)
+            if i == 0:
+                in_channels = num_input_ts  # TCN acts only on B field(s) in first layer
+            elif i == 1:
+                in_channels = tcn_layer_cfg['f'][0]['units'] # layer acts on proccd B field and all scalars added
+            else:
+                in_channels = tcn_layer_cfg['f'][i-1]['units']  
+            tcn_layers += [TemporalBlock(in_channels, l_cfg['units'], kernel_size, stride=1, dilation=dilation_size,
+                                     residual=tcn_layer_cfg.get('residual', False),
+                                     double_layered=tcn_layer_cfg.get("double_layered", False),
+                                     dropout=dropout_rate, act_func=l_cfg.get('act_func', nn.Identity)),
+                       ]
+            if i == 0:
+                self.b_proc_layer = tcn_layers.pop()
+        self.upper_tcn = nn.Sequential(*tcn_layers)
+        self.scalar_layer = TemporalBlock(num_input_scalars, num_input_scalars,  kernel_size=1, stride=1, dilation=1, residual=False, double_layered=False,
+                                     dropout=False, act_func=scalar_layer_cfg['f'][0]['act_func'])
+    
+    def forward(self, x):
+        b_proc = self.b_proc_layer(x[:, self.x_idx_for_ts, :])
+        scalar_proc = self.scalar_layer(x[:, :-self.num_input_ts, :])
+        catted = torch.cat([b_proc[:, :-scalar_proc.shape[1], :], b_proc[:, -scalar_proc.shape[1]:, :] + scalar_proc], dim=1)
+        y = self.upper_tcn(catted)
+        # subtract mean across time domain
+        y = y - y.mean(dim=-1).unsqueeze(-1)
+        return y
+
+
