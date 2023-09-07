@@ -106,7 +106,7 @@ def crest_factor(x):
 
 
 
-def bool_filter_sine(b, rel_kf=0.005, rel_kc=0.005, rel_0_dev=0.1):
+def bool_filter_sine(b, rel_kf=0.01, rel_kc=0.01, rel_0_dev=0.1):
     """
     b: input flux density (nxm)-array with n m-dimensional flux density waveforms
     rel_kf: (allowed) relative deviation of the form factor for sine classification
