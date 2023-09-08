@@ -27,7 +27,7 @@ N_SEEDS = 1  # how often should the experiment be repeated with different random
 N_JOBS = 1  # how many processes should be working
 N_EPOCHS = 60 if DEBUG else 3000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
-SUBSAMPLE_FACTOR = 8  # every n-th sample along the time axis is considered
+SUBSAMPLE_FACTOR = 4  # every n-th sample along the time axis is considered
 K_KFOLD = 2 if DEBUG else 4  # how many folds in cross validation
 BATCH_SIZE = 512  # how many periods/profiles/measurements should be averaged across for a weight update
 
