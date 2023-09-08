@@ -11,9 +11,10 @@ import gc
 
 from utils.experiments import (
     get_stratified_fold_indices,
-    PROC_SOURCE, BSAT_MAP,
+    PROC_SOURCE,
+    BSAT_MAP,
     get_bh_integral_from_two_mats,
-    get_waveform_est
+    get_waveform_est,
 )
 from utils.metrics import calculate_metrics
 from utils.topology import TemporalAcausalConvNet, TCNWithScalarsAsBias
@@ -61,10 +62,21 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit, b_limit_pp=None):
     ]
     if b_limit_pp is not None:
         # add another B curve with different normalization
+        per_profile_scaled_b = full_b * b_limit / b_limit_pp
+        freq = X.loc[:, 'freq'].to_numpy().reshape(-1, 1)
+        # get derivatives
+        b_deriv = np.empty((full_b.shape[0], full_b.shape[1]+2))
+        b_deriv[:, 1:-1] = per_profile_scaled_b
+        b_deriv[:, 0] = per_profile_scaled_b[:, -1]
+        b_deriv[:, -1] = per_profile_scaled_b[:, 0]
+        b_deriv = np.gradient(b_deriv, axis=1)*freq
+        b_deriv_sq = np.gradient(b_deriv, axis=1)*freq
+        b_deriv = b_deriv[:, 1:-1]
+        b_deriv_sq = b_deriv_sq[:, 1:-1]
         tens_l += [
-            torch.tensor(
-                (full_b * b_limit / b_limit_pp).T[..., np.newaxis], dtype=torch.float32
-            )
+            torch.tensor(per_profile_scaled_b.T[..., np.newaxis], dtype=torch.float32),
+            torch.tensor(b_deriv.T[..., np.newaxis] / np.abs(b_deriv).max(), dtype=torch.float32),
+            torch.tensor(b_deriv_sq.T[..., np.newaxis]  / np.abs(b_deriv_sq).max(), dtype=torch.float32)
         ]
     tens_l += [
         torch.tensor(
@@ -139,7 +151,7 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                 )
 
                 if per_profile_norm:
-                    b_limit_fold = b_limit  # [train_idx]
+                    b_limit_fold = b_limit
                     b_limit_fold_pp = b_limit_per_profile[train_idx]
                     h_limit_fold = h_limit[train_idx]
                 else:
@@ -155,9 +167,10 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                 ).to(device)
 
                 # mdl = TemporalAcausalConvNet(num_inputs=len(x_cols)+1, layer_cfg=None) # default layer config
+                n_ts = 3 # number of time series per profile next to B curve
                 mdl = TCNWithScalarsAsBias(
                     num_input_scalars=len(x_cols),
-                    num_input_ts=1+int(per_profile_norm),
+                    num_input_ts=1 + int(per_profile_norm)*n_ts,
                     tcn_layer_cfg=None,
                     scalar_layer_cfg=None,
                 )
@@ -168,11 +181,16 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                     desc=f"Seed {rep}, fold {kfold_lbl}",
                     position=rep * K_KFOLD + kfold_lbl,
                     unit="epoch",
+                    mininterval=1.0,
                 )
                 if rep == 0 and kfold_lbl == 0 and m_i == 0:  # print only once
                     mdl_info = ti_summary(
                         mdl,
-                        input_size=(1, len(x_cols) + 1+int(per_profile_norm), train_tensor.shape[0]),
+                        input_size=(
+                            1,
+                            len(x_cols) + 1 + int(per_profile_norm)*n_ts,
+                            train_tensor.shape[0],
+                        ),
                         device=device,
                         verbose=0,
                     )
@@ -226,33 +244,34 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                             train_loss.cpu().item()
                         )
                         pbar_str = f"Loss {train_loss.cpu().item():.2e}"
-                    # validation set
-                    if per_profile_norm:
-                        test_idx = test_fold_df.index.to_numpy()
-                        b_limit_test_fold = b_limit
-                        b_limit_test_fold_pp = b_limit_per_profile[test_idx]
-                        h_limit_test_fold = h_limit[test_idx]
-                    else:
-                        b_limit_test_fold = b_limit
-                        h_limit_test_fold = h_limit
-                        b_limit_test_fold_pp = None
-                    val_tensor = construct_tensor_seq2seq(
-                        test_fold_df,
-                        x_cols,
-                        b_limit_test_fold,
-                        h_limit_test_fold,
-                        b_limit_pp=b_limit_test_fold_pp,
-                    ).to(device)
+                    if i_epoch % 10 == 0:
+                        # validation set
+                        if per_profile_norm:
+                            test_idx = test_fold_df.index.to_numpy()
+                            b_limit_test_fold = b_limit
+                            b_limit_test_fold_pp = b_limit_per_profile[test_idx]
+                            h_limit_test_fold = h_limit[test_idx]
+                        else:
+                            b_limit_test_fold = b_limit
+                            h_limit_test_fold = h_limit
+                            b_limit_test_fold_pp = None
+                        val_tensor = construct_tensor_seq2seq(
+                            test_fold_df,
+                            x_cols,
+                            b_limit_test_fold,
+                            h_limit_test_fold,
+                            b_limit_pp=b_limit_test_fold_pp,
+                        ).to(device)
 
-                    mdl.eval()
-                    with torch.no_grad():
-                        val_pred = mdl(val_tensor[:, :, :-1].permute(1, 2, 0)).permute(
-                            2, 0, 1
-                        )
-                        val_g_truth = val_tensor[:, :, [-1]]
-                        val_loss = loss(val_pred, val_g_truth).cpu().item()
-                        logs["loss_trends_val"][kfold_lbl].append(val_loss)
-                        pbar_str += f"| val loss {val_loss:.2e}"
+                        mdl.eval()
+                        with torch.no_grad():
+                            val_pred = mdl(val_tensor[:, :, :-1].permute(1, 2, 0)).permute(
+                                2, 0, 1
+                            )
+                            val_g_truth = val_tensor[:, :, [-1]]
+                            val_loss = loss(val_pred, val_g_truth).cpu().item()
+                            logs["loss_trends_val"][kfold_lbl].append(val_loss)
+                    pbar_str += f"| val loss {val_loss:.2e}"
                     pbar.set_postfix_str(pbar_str)
                     if np.isnan(val_loss):
                         break
@@ -261,7 +280,7 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                             for group in opt.param_groups:
                                 group["lr"] *= 0.75
                     if i_epoch == N_EPOCHS - 1:  # last epoch
-                        with torch.inference_mode(): # take last epoch's model as best model
+                        with torch.inference_mode():  # take last epoch's model as best model
                             val_tensor_numpy = val_tensor.cpu().numpy()
                             results_df.loc[
                                 results_df.kfold == kfold_lbl, "pred"
@@ -269,7 +288,8 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                                 freq=np.exp(val_tensor_numpy[0, :, 0].reshape(-1, 1))
                                 * 150_000,
                                 b=val_tensor_numpy[:, :, -2].T * b_limit_test_fold,
-                                h=val_pred.squeeze().cpu().numpy().T * h_limit_test_fold,
+                                h=val_pred.squeeze().cpu().numpy().T
+                                * h_limit_test_fold,
                             )
                 logs["models_state_dict"].append(mdl.cpu())
 
@@ -305,7 +325,9 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
 
 if __name__ == "__main__":
     ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
-    waveforms = get_waveform_est(ds.loc[:, [f"B_t_{k}" for k in range(1024)]].to_numpy())
+    waveforms = get_waveform_est(
+        ds.loc[:, [f"B_t_{k}" for k in range(1024)]].to_numpy()
+    )
     ds = pd.concat(
         [
             ds,
@@ -320,7 +342,7 @@ if __name__ == "__main__":
         ],
         axis=1,
     )
-  
+
     full_b = ds.loc[:, B_COLS].to_numpy()
     dbdt = full_b[:, 1:] - full_b[:, :-1]
     b_peak2peak = full_b.max(axis=1) - full_b.min(axis=1)
