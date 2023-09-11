@@ -156,20 +156,18 @@ class TCNWithScalarsAsBias(nn.Module):
         super().__init__()
         self.num_input_ts = num_input_ts
         self.x_idx_for_ts = [-a for a in range(1, num_input_ts+1)]
-        tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': num_input_scalars+2, 'act_func': 'tanh'}, 
-                                                {'units': 24, 'act_func': 'tanh'}, 
+        tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': num_input_scalars+num_input_ts, 'act_func': 'tanh'}, 
+                                                {'units': 32, 'act_func': 'tanh'}, 
                                                 {'units': 1}]} 
         scalar_layer_cfg = scalar_layer_cfg or {'f': [{'units': num_input_scalars, 'act_func': 'tanh'}]}  # only one layer
         tcn_layers = []
         dilation_offset = tcn_layer_cfg.get("starting_dilation_rate", 0)  # >= 0
         for i, l_cfg in enumerate(tcn_layer_cfg['f']):
-            kernel_size = l_cfg.get('kernel_size', 7)
+            kernel_size = l_cfg.get('kernel_size', 9)
             dropout_rate = tcn_layer_cfg.get("dropout", 0.0)
             dilation_size = 2 ** (i + dilation_offset)
             if i == 0:
                 in_channels = num_input_ts  # TCN acts only on B field(s) in first layer
-            elif i == 1:
-                in_channels = tcn_layer_cfg['f'][0]['units'] # layer acts on proccd B field and all scalars added
             else:
                 in_channels = tcn_layer_cfg['f'][i-1]['units']  
             tcn_layers += [TemporalBlock(in_channels, l_cfg['units'], kernel_size, stride=1, dilation=dilation_size,
@@ -188,8 +186,11 @@ class TCNWithScalarsAsBias(nn.Module):
         scalar_proc = self.scalar_layer(x[:, :-self.num_input_ts, :])
         catted = torch.cat([b_proc[:, :-scalar_proc.shape[1], :], b_proc[:, -scalar_proc.shape[1]:, :] + scalar_proc], dim=1)
         y = self.upper_tcn(catted)
+        y = y + x[:, [-self.num_input_ts], :]  # residual connection to per-profile scaled B curve
+
         # subtract mean across time domain
         y = y - y.mean(dim=-1).unsqueeze(-1)
+
         return y
 
 
