@@ -7,12 +7,13 @@ from pprint import pprint
 import torch
 from torchinfo import summary as ti_summary
 import random
-import gc
+from datetime import datetime
 
 from utils.experiments import (
     get_stratified_fold_indices,
     PROC_SOURCE,
     BSAT_MAP,
+    PRED_SINK,
     get_bh_integral_from_two_mats,
     get_waveform_est,
 )
@@ -22,10 +23,10 @@ from utils.topology import TemporalAcausalConvNet, TCNWithScalarsAsBias
 
 pd.set_option("display.max_columns", None)
 
-DEBUG = False
-N_SEEDS = 1  # how often should the experiment be repeated with different random init
+DEBUG = True
+N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 60 if DEBUG else 3000  # how often should the full data set be iterated over
+N_EPOCHS = 5 if DEBUG else 3000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = 4  # every n-th sample along the time axis is considered
 K_KFOLD = 2 if DEBUG else 4  # how many folds in cross validation
@@ -34,6 +35,7 @@ BATCH_SIZE = 512  # how many periods/profiles/measurements should be averaged ac
 
 B_COLS = [f"B_t_{k}" for k in range(0, 1024, SUBSAMPLE_FACTOR)]
 H_COLS = [f"H_t_{k}" for k in range(0, 1024, SUBSAMPLE_FACTOR)]
+H_PRED_COLS = [f"h_pred_{i}" for i in range(1024 // SUBSAMPLE_FACTOR)]
 DEBUG_MATERIALS = ["3C90", "78"]
 
 
@@ -63,20 +65,25 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit, b_limit_pp=None):
     if b_limit_pp is not None:
         # add another B curve with different normalization
         per_profile_scaled_b = full_b * b_limit / b_limit_pp
-        freq = X.loc[:, 'freq'].to_numpy().reshape(-1, 1)
+        freq = X.loc[:, "freq"].to_numpy().reshape(-1, 1)
         # get derivatives
-        b_deriv = np.empty((full_b.shape[0], full_b.shape[1]+2))
+        b_deriv = np.empty((full_b.shape[0], full_b.shape[1] + 2))
         b_deriv[:, 1:-1] = per_profile_scaled_b
         b_deriv[:, 0] = per_profile_scaled_b[:, -1]
         b_deriv[:, -1] = per_profile_scaled_b[:, 0]
-        b_deriv = np.gradient(b_deriv, axis=1)*freq
-        b_deriv_sq = np.gradient(b_deriv, axis=1)*freq
+        b_deriv = np.gradient(b_deriv, axis=1) * freq
+        b_deriv_sq = np.gradient(b_deriv, axis=1) * freq
         b_deriv = b_deriv[:, 1:-1]
         b_deriv_sq = b_deriv_sq[:, 1:-1]
         tens_l += [
             torch.tensor(per_profile_scaled_b.T[..., np.newaxis], dtype=torch.float32),
-            torch.tensor(b_deriv.T[..., np.newaxis] / np.abs(b_deriv).max(), dtype=torch.float32),
-            torch.tensor(b_deriv_sq.T[..., np.newaxis]  / np.abs(b_deriv_sq).max(), dtype=torch.float32)
+            torch.tensor(
+                b_deriv.T[..., np.newaxis] / np.abs(b_deriv).max(), dtype=torch.float32
+            ),
+            torch.tensor(
+                b_deriv_sq.T[..., np.newaxis] / np.abs(b_deriv_sq).max(),
+                dtype=torch.float32,
+            ),
         ]
     tens_l += [
         torch.tensor(
@@ -125,6 +132,11 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
             }
             # training result container
             results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(pred=0)
+            results_df = pd.concat([results_df, 
+                                    pd.DataFrame(np.zeros((len(results_df),
+                                                          len(H_PRED_COLS))),
+                                                columns=H_PRED_COLS)], axis=1)
+                
             x_cols = [
                 c
                 for c in mat_df_proc
@@ -132,8 +144,10 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
             ]
 
             # store max elongation for normalization
-            b_limit = np.abs(mat_df_proc.loc[:, B_COLS].to_numpy()).max()
-            h_limit = np.abs(mat_df_proc.loc[:, H_COLS].to_numpy()).max()
+            b_limit = np.abs(mat_df_proc.loc[:, B_COLS].to_numpy()).max()  # T
+            h_limit = min(
+                np.abs(mat_df_proc.loc[:, H_COLS].to_numpy()).max(), 150
+            )  # A/m
             if per_profile_norm:
                 # normalize on a per-profile base
                 b_limit_per_profile = (
@@ -167,10 +181,10 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                 ).to(device)
 
                 # mdl = TemporalAcausalConvNet(num_inputs=len(x_cols)+1, layer_cfg=None) # default layer config
-                n_ts = 3 # number of time series per profile next to B curve
+                n_ts = 3  # number of time series per profile next to B curve
                 mdl = TCNWithScalarsAsBias(
                     num_input_scalars=len(x_cols),
-                    num_input_ts=1 + int(per_profile_norm)*n_ts,
+                    num_input_ts=1 + int(per_profile_norm) * n_ts,
                     tcn_layer_cfg=None,
                     scalar_layer_cfg=None,
                 )
@@ -188,7 +202,7 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                         mdl,
                         input_size=(
                             1,
-                            len(x_cols) + 1 + int(per_profile_norm)*n_ts,
+                            len(x_cols) + 1 + int(per_profile_norm) * n_ts,
                             train_tensor.shape[0],
                         ),
                         device=device,
@@ -265,9 +279,9 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
 
                         mdl.eval()
                         with torch.no_grad():
-                            val_pred = mdl(val_tensor[:, :, :-1].permute(1, 2, 0)).permute(
-                                2, 0, 1
-                            )
+                            val_pred = mdl(
+                                val_tensor[:, :, :-1].permute(1, 2, 0)
+                            ).permute(2, 0, 1)
                             val_g_truth = val_tensor[:, :, [-1]]
                             val_loss = loss(val_pred, val_g_truth).cpu().item()
                             logs["loss_trends_val"][kfold_lbl].append(val_loss)
@@ -282,44 +296,42 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                     if i_epoch == N_EPOCHS - 1:  # last epoch
                         with torch.inference_mode():  # take last epoch's model as best model
                             val_tensor_numpy = val_tensor.cpu().numpy()
+                            h_pred_val = (
+                                val_pred.squeeze().cpu().numpy().T * h_limit_test_fold
+                            )
                             results_df.loc[
                                 results_df.kfold == kfold_lbl, "pred"
                             ] = get_bh_integral_from_two_mats(
                                 freq=np.exp(val_tensor_numpy[0, :, 0].reshape(-1, 1))
                                 * 150_000,
                                 b=val_tensor_numpy[:, :, -2].T * b_limit_test_fold,
-                                h=val_pred.squeeze().cpu().numpy().T
-                                * h_limit_test_fold,
+                                h=h_pred_val,
                             )
+                            results_df.loc[
+                                results_df.kfold == kfold_lbl,
+                                [c for c in results_df if c.startswith("h_pred_")],
+                            ] = h_pred_val
                 logs["models_state_dict"].append(mdl.cpu())
 
             # book keeping
             logs["performance"] = calculate_metrics(
                 results_df.loc[:, "pred"], results_df.loc[:, "ploss"]
             )
-
+            logs['results_df'] = results_df
             return logs
 
         n_seeds = N_SEEDS
         print(f"Parallelize over {n_seeds} seeds with {N_JOBS} processes..")
         # start experiments in parallel processes
         # list of dicts
-        # mat_log = prll(delayed(run_dyn_training)(s) for s in range(n_seeds))
+        # mat_log = prll(delayed(run_dyn_training)(s) for s in range(start_seed, n_seeds + start_seed))
         logs_d[material_lbl] = [
             run_dyn_training(i) for i in range(start_seed, n_seeds + start_seed)
         ]
         # logs_d[material_lbl] = {'performance': pd.DataFrame.from_dict([m['performance'] for m in mat_log]),
         #                        'misc': [m for m in mat_log]}
 
-    print("Overall Score")
-    performances = {
-        material: pd.DataFrame.from_dict([mm["performance"] for mm in misc_l])
-        for material, misc_l in logs_d.items()
-    }
-    disp_d = pd.DataFrame(
-        {m: l.loc[:, "avg-abs-rel-err"].to_numpy() for m, l in performances.items()}
-    )
-    print(disp_d.T)
+
     return logs_d
 
 
@@ -353,4 +365,18 @@ if __name__ == "__main__":
         log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
         db_bsat=b_peak2peak / ds.material.map(BSAT_MAP),
     )
-    main(ds=ds, per_profile_norm=True)
+    logs = main(ds=ds, per_profile_norm=True)
+    print("Overall Score")
+    performances_df = pd.DataFrame({
+        material: {f'seed_{i}': mm["performance"]["avg-abs-rel-err"] for i, mm in enumerate(seed_logs_l)}
+        for material, seed_logs_l in logs.items()})
+    
+    print(performances_df)
+    # store predictions for post-processing
+    print('Store predictions to disk..', end='')
+    best_seed = np.argmin(performances_df.to_numpy().mean(axis=0))
+    best_score = np.min(performances_df.to_numpy().mean(axis=0))
+    h_preds_df = pd.concat([seed_logs_l[best_seed]['results_df'].loc[:, H_PRED_COLS].assign(material=material) 
+                 for material, seed_logs_l in logs.items()], ignore_index=True)
+    h_preds_df.to_csv(PRED_SINK / f"CNN_H_preds_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_score_{best_score*100:.2f}.csv.zip", index=False)
+    print('done.')
