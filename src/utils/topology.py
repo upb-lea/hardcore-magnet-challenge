@@ -95,7 +95,7 @@ class TemporalAcausalConvNet(nn.Module):
 
     def forward(self, x):
         y = self.network(x)
-        # subtract mean across time domain
+        # subtract mean along time domain
         y = y - y.mean(dim=-1).unsqueeze(-1)
         return y
 
@@ -104,7 +104,7 @@ class TCNWithScalarsAsBias(nn.Module):
         super().__init__()
         self.num_input_ts = num_input_ts
         self.x_idx_for_ts = [-a for a in range(1, num_input_ts+1)]
-        tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': num_input_scalars+num_input_ts, 'act_func': 'tanh'}, 
+        tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': (num_input_scalars+num_input_ts), 'act_func': 'tanh'}, 
                                                 {'units': 24, 'act_func': 'tanh'}, 
                                                 {'units': 1}]} 
         scalar_layer_cfg = scalar_layer_cfg or {'f': [{'units': num_input_scalars, 'act_func': 'tanh'}]}  # only one layer
@@ -126,17 +126,17 @@ class TCNWithScalarsAsBias(nn.Module):
             if i == 0:
                 self.b_proc_layer = tcn_layers.pop()
         self.upper_tcn = nn.Sequential(*tcn_layers)
-        self.scalar_layer = TemporalBlock(num_input_scalars, num_input_scalars,  kernel_size=1, stride=1, dilation=1, residual=False, double_layered=False,
-                                     dropout=False, act_func=scalar_layer_cfg['f'][0]['act_func'])
+        self.scalar_layer = nn.Sequential(nn.Linear(num_input_scalars, num_input_scalars), nn.Tanh())
     
-    def forward(self, x):
-        b_proc = self.b_proc_layer(x[:, self.x_idx_for_ts, :])
-        scalar_proc = self.scalar_layer(x[:, :-self.num_input_ts, :])
-        catted = torch.cat([b_proc[:, :-scalar_proc.shape[1], :], b_proc[:, -scalar_proc.shape[1]:, :] + scalar_proc], dim=1)
+    def forward(self, x_ts, x_scalars):
+        """x_ts has shape (#batch, #channels, #length) and x_scalars has (#batch, #channels)"""
+        b_proc = self.b_proc_layer(x_ts)
+        scalar_proc = self.scalar_layer(x_scalars)
+        catted = torch.cat([b_proc[:, :-scalar_proc.shape[1], :], b_proc[:, -scalar_proc.shape[1]:, :] + scalar_proc.unsqueeze(-1)], dim=1)
         y = self.upper_tcn(catted)
-        y = y + x[:, [-self.num_input_ts], :]  # residual connection to per-profile scaled B curve
+        y = y + x_ts[:, [0], :]  # residual connection to per-profile scaled B curve
 
-        # subtract mean across time domain
+        # subtract mean along time domain
         y = y - y.mean(dim=-1).unsqueeze(-1)
 
         return y

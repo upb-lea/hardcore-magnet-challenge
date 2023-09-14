@@ -56,12 +56,7 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit, b_limit_pp=None):
     other_cols = [c for c in x_cols if c not in ["temp", "freq"]]
     X.loc[:, other_cols] /= X.loc[:, other_cols].abs().max(axis=0)
     # tensor list
-    tens_l = [
-        torch.tensor(
-            np.repeat(X.to_numpy()[np.newaxis, ...], full_b.shape[1], axis=0),
-            dtype=torch.float32,
-        )
-    ]
+    tens_l = []
     if b_limit_pp is not None:
         # add another B curve with different normalization
         per_profile_scaled_b = full_b * b_limit / b_limit_pp
@@ -96,8 +91,8 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit, b_limit_pp=None):
         ),  # target is last column
     ]
 
-    # return tensor with shape: (#time steps, #profiles, #features)
-    return torch.dstack(tens_l)
+    # return ts tensor with shape: (#time steps, #profiles, #features), and scalar tensor with (#profiles, #features)
+    return torch.dstack(tens_l), torch.tensor(X.to_numpy(), dtype=torch.float32)
 
 
 def main(ds=None, start_seed=0, per_profile_norm=False):
@@ -174,13 +169,15 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                     b_limit_fold = b_limit
                     b_limit_fold_pp = None
                     h_limit_fold = h_limit
-                train_tensor = construct_tensor_seq2seq(
+                train_tensor_ts, train_tensor_scalar = construct_tensor_seq2seq(
                     train_fold_df,
                     x_cols,
                     b_limit_fold,
                     h_limit_fold,
                     b_limit_pp=b_limit_fold_pp,
-                ).to(device)
+                )
+                train_tensor_ts = train_tensor_ts.to(device)
+                train_tensor_scalar = train_tensor_scalar.to(device)
 
                 # mdl = TemporalAcausalConvNet(num_inputs=len(x_cols)+1, layer_cfg=None) # default layer config
                 n_ts = 4  # number of time series per profile next to B curve
@@ -202,11 +199,8 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                 if rep == 0 and kfold_lbl == 0 and m_i == 0:  # print only once
                     mdl_info = ti_summary(
                         mdl,
-                        input_size=(
-                            1,
-                            len(x_cols) + 1 + int(per_profile_norm) * n_ts,
-                            train_tensor.shape[0],
-                        ),
+                        input_data=[torch.ones((1, 1 + int(per_profile_norm) * n_ts, len(H_COLS)), dtype=torch.float32),
+                                    torch.ones((1, len(x_cols)), dtype=torch.float32) ],
                         device=device,
                         verbose=0,
                     )
@@ -215,7 +209,7 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                 mdl.to(device)
 
                 # generate shuffled indices beforehand
-                n_profiles = train_tensor.shape[1]
+                n_profiles = train_tensor_ts.shape[1]
                 idx_mat = []
                 for _ in range(N_EPOCHS):
                     idx = np.arange(n_profiles)
@@ -228,8 +222,9 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                     mdl.train()
                     # shuffle profiles
                     indices = idx_mat[i_epoch]
-                    train_tensor_shuffled = train_tensor[:, indices, :]
-                    n_profiles = train_tensor_shuffled.shape[1]
+                    train_tensor_ts_shuffled = train_tensor_ts[:, indices, :]
+                    train_tensor_scalar_shuffled = train_tensor_scalar[indices, :]
+
                     # randomly shift time axis (all profiles the same amount)
                     #  Not necessary for CNNs!
                     # train_tensor_shuffled = torch.roll(
@@ -241,16 +236,21 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                         # extract mini-batch
                         start_marker = i_batch * BATCH_SIZE
                         end_marker = min((i_batch + 1) * BATCH_SIZE, n_profiles)
-                        train_tensor_shuffled_n_batched = train_tensor_shuffled[
+                        train_tensor_ts_shuffled_n_batched = train_tensor_ts_shuffled[
                             :, start_marker:end_marker, :
+                        ]
+                        train_tensor_scalar_shuffled_n_batched = train_tensor_scalar_shuffled[
+                            start_marker:end_marker, :
                         ]
 
                         # iteration from beginning to end of subsequences to average gradients across
                         mdl.zero_grad()
-                        train_sample = train_tensor_shuffled_n_batched
-                        g_truth = train_sample[:, :, [-1]]
-                        X_tensor = train_sample[:, :, :-1]
-                        output = mdl(X_tensor.permute(1, 2, 0)).permute(2, 0, 1)
+
+                        g_truth = train_tensor_ts_shuffled_n_batched[:, :, [-1]]
+                        X_tensor_ts = train_tensor_ts_shuffled_n_batched[:, :, :-1]
+                        X_tensor_scalar = train_tensor_scalar_shuffled_n_batched
+                        output = mdl(X_tensor_ts.permute(1, 2, 0),
+                                     X_tensor_scalar).permute(2, 0, 1)
 
                         train_loss = loss(output, g_truth)
                         train_loss.backward()
@@ -271,20 +271,23 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                             b_limit_test_fold = b_limit
                             h_limit_test_fold = h_limit
                             b_limit_test_fold_pp = None
-                        val_tensor = construct_tensor_seq2seq(
+                        val_tensor_ts, val_tensor_scalar = construct_tensor_seq2seq(
                             test_fold_df,
                             x_cols,
                             b_limit_test_fold,
                             h_limit_test_fold,
                             b_limit_pp=b_limit_test_fold_pp,
-                        ).to(device)
+                        )
+                        val_tensor_ts = val_tensor_ts.to(device)
+                        val_tensor_scalar = val_tensor_scalar.to(device)
 
                         mdl.eval()
                         with torch.no_grad():
                             val_pred = mdl(
-                                val_tensor[:, :, :-1].permute(1, 2, 0)
+                                val_tensor_ts[:, :, :-1].permute(1, 2, 0),
+                                val_tensor_scalar
                             ).permute(2, 0, 1)
-                            val_g_truth = val_tensor[:, :, [-1]]
+                            val_g_truth = val_tensor_ts[:, :, [-1]]
                             val_loss = loss(val_pred, val_g_truth).cpu().item()
                             logs["loss_trends_val"][kfold_lbl].append(val_loss)
                     pbar_str += f"| val loss {val_loss:.2e}"
@@ -297,16 +300,17 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                                 group["lr"] *= 0.75
                     if i_epoch == N_EPOCHS - 1:  # last epoch
                         with torch.inference_mode():  # take last epoch's model as best model
-                            val_tensor_numpy = val_tensor.cpu().numpy()
+                            val_tensor_ts_np = val_tensor_ts.cpu().numpy()
+                            val_tensor_scalars_np = val_tensor_scalar.cpu().numpy()
                             h_pred_val = (
                                 val_pred.squeeze().cpu().numpy().T * h_limit_test_fold
                             )
                             results_df.loc[
                                 results_df.kfold == kfold_lbl, "pred"
                             ] = get_bh_integral_from_two_mats(
-                                freq=np.exp(val_tensor_numpy[0, :, 0].reshape(-1, 1))
+                                freq=np.exp(val_tensor_scalars_np[:, 0].reshape(-1, 1))
                                 * 150_000,
-                                b=val_tensor_numpy[:, :, -2].T * b_limit_test_fold,
+                                b=val_tensor_ts_np[:, :, -2].T * b_limit_test_fold,
                                 h=h_pred_val,
                             )
                             results_df.loc[
