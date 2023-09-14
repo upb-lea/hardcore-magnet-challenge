@@ -23,7 +23,7 @@ from utils.topology import TemporalAcausalConvNet, TCNWithScalarsAsBias
 
 pd.set_option("display.max_columns", None)
 
-DEBUG = True
+DEBUG = False
 N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
 N_EPOCHS = 5 if DEBUG else 3000  # how often should the full data set be iterated over
@@ -75,6 +75,7 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit, b_limit_pp=None):
         b_deriv_sq = np.gradient(b_deriv, axis=1) * freq
         b_deriv = b_deriv[:, 1:-1]
         b_deriv_sq = b_deriv_sq[:, 1:-1]
+        tantan_b  = -np.tan(0.9*np.tan(per_profile_scaled_b))/6  # tan-tan feature
         tens_l += [
             torch.tensor(per_profile_scaled_b.T[..., np.newaxis], dtype=torch.float32),
             torch.tensor(
@@ -84,6 +85,7 @@ def construct_tensor_seq2seq(df, x_cols, b_limit, h_limit, b_limit_pp=None):
                 b_deriv_sq.T[..., np.newaxis] / np.abs(b_deriv_sq).max(),
                 dtype=torch.float32,
             ),
+            torch.tensor(tantan_b.T[..., np.newaxis], dtype=torch.float32)
         ]
     tens_l += [
         torch.tensor(
@@ -181,7 +183,7 @@ def main(ds=None, start_seed=0, per_profile_norm=False):
                 ).to(device)
 
                 # mdl = TemporalAcausalConvNet(num_inputs=len(x_cols)+1, layer_cfg=None) # default layer config
-                n_ts = 3  # number of time series per profile next to B curve
+                n_ts = 4  # number of time series per profile next to B curve
                 mdl = TCNWithScalarsAsBias(
                     num_input_scalars=len(x_cols),
                     num_input_ts=1 + int(per_profile_norm) * n_ts,
@@ -370,12 +372,14 @@ if __name__ == "__main__":
     performances_df = pd.DataFrame({
         material: {f'seed_{i}': mm["performance"]["avg-abs-rel-err"] for i, mm in enumerate(seed_logs_l)}
         for material, seed_logs_l in logs.items()})
-    
-    print(performances_df)
+    print(performances_df)  # (#seeds, #materials)
+    best_seed = np.argmin(performances_df.to_numpy().mean(axis=1))
+    best_score = np.min(performances_df.to_numpy().mean(axis=1))
+    print(f"Mean Score: {best_score.mean()*100:.2f} %")
+
     # store predictions for post-processing
     print('Store predictions to disk..', end='')
-    best_seed = np.argmin(performances_df.to_numpy().mean(axis=0))
-    best_score = np.min(performances_df.to_numpy().mean(axis=0))
+    
     h_preds_df = pd.concat([seed_logs_l[best_seed]['results_df'].loc[:, H_PRED_COLS].assign(material=material) 
                  for material, seed_logs_l in logs.items()], ignore_index=True)
     h_preds_df.to_csv(PRED_SINK / f"CNN_H_preds_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_score_{best_score*100:.2f}.csv.zip", index=False)

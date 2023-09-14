@@ -105,7 +105,7 @@ class TCNWithScalarsAsBias(nn.Module):
         self.num_input_ts = num_input_ts
         self.x_idx_for_ts = [-a for a in range(1, num_input_ts+1)]
         tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': num_input_scalars+num_input_ts, 'act_func': 'tanh'}, 
-                                                {'units': 32, 'act_func': 'tanh'}, 
+                                                {'units': 24, 'act_func': 'tanh'}, 
                                                 {'units': 1}]} 
         scalar_layer_cfg = scalar_layer_cfg or {'f': [{'units': num_input_scalars, 'act_func': 'tanh'}]}  # only one layer
         tcn_layers = []
