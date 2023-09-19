@@ -106,9 +106,13 @@ class TCNWithScalarsAsBias(nn.Module):
         self.x_idx_for_ts = [-a for a in range(1, num_input_ts+1)]
         tcn_layer_cfg = tcn_layer_cfg or {'f': [{'units': (num_input_scalars+num_input_ts), 'act_func': 'tanh'}, 
                                                 {'units': 24, 'act_func': 'tanh'}, 
+                                                #{'units': 24, 'act_func': 'tanh'},
                                                 {'units': 1}]} 
-        scalar_layer_cfg = scalar_layer_cfg or {'f': [{'units': num_input_scalars, 'act_func': 'tanh'}]}  # only one layer
-        tcn_layers = []
+        scalar_layer_cfg = scalar_layer_cfg or {'f': [{'units': num_input_scalars, 'act_func': 'tanh'},
+                                                      #{'units': 8, 'act_func': 'tanh'}
+                                                      ]}
+        # build CNN layer path
+        cnn_layers = []
         dilation_offset = tcn_layer_cfg.get("starting_dilation_rate", 0)  # >= 0
         for i, l_cfg in enumerate(tcn_layer_cfg['f']):
             kernel_size = l_cfg.get('kernel_size', 9)
@@ -118,15 +122,23 @@ class TCNWithScalarsAsBias(nn.Module):
                 in_channels = num_input_ts  # TCN acts only on B field(s) in first layer
             else:
                 in_channels = tcn_layer_cfg['f'][i-1]['units']  
-            tcn_layers += [TemporalBlock(in_channels, l_cfg['units'], kernel_size, stride=1, dilation=dilation_size,
+            cnn_layers += [TemporalBlock(in_channels, l_cfg['units'], kernel_size, stride=1, dilation=dilation_size,
                                      residual=tcn_layer_cfg.get('residual', False),
                                      double_layered=tcn_layer_cfg.get("double_layered", False),
                                      dropout=dropout_rate, act_func=l_cfg.get('act_func', nn.Identity)),
                        ]
             if i == 0:
-                self.b_proc_layer = tcn_layers.pop()
-        self.upper_tcn = nn.Sequential(*tcn_layers)
-        self.scalar_layer = nn.Sequential(nn.Linear(num_input_scalars, num_input_scalars), nn.Tanh())
+                self.b_proc_layer = cnn_layers.pop()
+        self.upper_tcn = nn.Sequential(*cnn_layers)
+        # build scalar NN path
+        scalar_layers = []
+        fan_in = num_input_scalars
+        for i, l_cfg in enumerate(scalar_layer_cfg['f']):
+            scalar_layers.append(nn.Linear(fan_in, l_cfg['units']))
+            scalar_layers.append(ACTIVATION_FUNCS.get(l_cfg['act_func'], nn.Identity)())
+            fan_in = l_cfg['units']
+
+        self.scalar_layer = nn.Sequential(*scalar_layers)
     
     def forward(self, x_ts, x_scalars):
         """x_ts has shape (#batch, #channels, #length) and x_scalars has (#batch, #channels)"""

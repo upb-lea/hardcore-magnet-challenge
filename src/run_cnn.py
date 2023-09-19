@@ -26,7 +26,7 @@ pd.set_option("display.max_columns", None)
 DEBUG = False
 N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 5 if DEBUG else 3000  # how often should the full data set be iterated over
+N_EPOCHS = 5 if DEBUG else 6000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = 4  # every n-th sample along the time axis is considered
 K_KFOLD = 2 if DEBUG else 4  # how many folds in cross validation
@@ -379,7 +379,7 @@ if __name__ == "__main__":
     print(performances_df)  # (#seeds, #materials)
     best_seed = np.argmin(performances_df.to_numpy().mean(axis=1))
     best_score = np.min(performances_df.to_numpy().mean(axis=1))
-    print(f"Mean Score: {best_score.mean()*100:.2f} %")
+    print(f"Mean Score: {best_score*100:.2f} %")
 
     # store predictions for post-processing
     print('Store predictions to disk..', end='')
