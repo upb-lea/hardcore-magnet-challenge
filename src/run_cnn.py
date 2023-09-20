@@ -26,11 +26,11 @@ pd.set_option("display.max_columns", None)
 DEBUG = False
 N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 5 if DEBUG else 6000  # how often should the full data set be iterated over
+N_EPOCHS = 5 if DEBUG else 2000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = 4  # every n-th sample along the time axis is considered
 K_KFOLD = 2 if DEBUG else 4  # how many folds in cross validation
-BATCH_SIZE = 512  # how many periods/profiles/measurements should be averaged across for a weight update
+BATCH_SIZE = 64  # how many periods/profiles/measurements should be averaged across for a weight update
 
 
 B_COLS = [f"B_t_{k}" for k in range(0, 1024, SUBSAMPLE_FACTOR)]
