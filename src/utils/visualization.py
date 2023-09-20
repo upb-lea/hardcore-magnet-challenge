@@ -4,15 +4,15 @@ import matplotlib.pyplot as plt
 from utils.experiments import get_bh_integral_from_two_mats
 
 
-
 plt.style.use("default")
-plt.rcParams.update({
-    'figure.dpi': 120,  # renders images larger for notebook
-    'axes.grid': True,
-    'grid.alpha': 0.3,
-    'font.family': 'serif',
-})
-
+plt.rcParams.update(
+    {
+        "figure.dpi": 120,  # renders images larger for notebook
+        "axes.grid": True,
+        "grid.alpha": 0.3,
+        "font.family": "serif",
+    }
+)
 
 
 def visualize_rel_error_report(preds, gtruth):
@@ -88,7 +88,7 @@ def visualize_rel_error_report(preds, gtruth):
                 color="tab:red",
                 verticalalignment="top",
                 horizontalalignment="right" if height == 0.2 else "left",
-                fontsize=8
+                fontsize=8,
             )
     fig.suptitle(
         "MagNet Challenge Pretest Results for 10 Known Materials - Due 11/01/2023\nTeam Paderborn University",
