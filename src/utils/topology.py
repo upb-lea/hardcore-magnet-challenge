@@ -140,6 +140,28 @@ class TCNWithScalarsAsBias(nn.Module):
 
         self.scalar_layer = nn.Sequential(*scalar_layers)
     
+    def __prepare_scriptable__(self):
+        """This function removes the WeightNorm layer when jit scripting the nn module. This is necessary, since
+        torch.jit.script would throw an error for any model possessing the weightnorm layer. This layer
+        is only necessary for efficient training, and since jit scripted models are for inference only, the
+        weight norm layer can be safely removed.
+        
+        Source:
+        https://github.com/pytorch/audio/blob/8690e6ec9b419299076ef333d9d25d1f59fe92b1/torchaudio/models/wav2vec2/components.py#L214-L223
+        """
+        for hook in self.b_proc_layer.conv1._forward_pre_hooks.values():
+            # The hook we want to remove is an instance of WeightNorm class, so
+            # normally we would do `if isinstance(...)` but this class is not accessible
+            # because of shadowing, so we check the module name directly.
+            # https://github.com/pytorch/pytorch/blob/be0ca00c5ce260eb5bcec3237357f7a30cc08983/torch/nn/utils/__init__.py#L3
+            if hook.__module__ == "torch.nn.utils.weight_norm" and hook.__class__.__name__ == "WeightNorm":
+                torch.nn.utils.remove_weight_norm(self.b_proc_layer.conv1)
+        for cnn_lay in self.upper_tcn:
+            for hook in cnn_lay.conv1._forward_pre_hooks.values():
+                if hook.__module__ == "torch.nn.utils.weight_norm" and hook.__class__.__name__ == "WeightNorm":
+                    torch.nn.utils.remove_weight_norm(cnn_lay.conv1)
+        return self
+
     def forward(self, x_ts, x_scalars):
         """x_ts has shape (#batch, #channels, #length) and x_scalars has (#batch, #channels)"""
         b_proc = self.b_proc_layer(x_ts)

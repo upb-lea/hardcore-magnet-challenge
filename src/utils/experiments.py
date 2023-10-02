@@ -5,6 +5,7 @@ from pathlib import Path
 DATA_SOURCE = Path.cwd().parent / "data" / "input" / "raw"
 PROC_SOURCE = DATA_SOURCE.parent / "processed"
 PRED_SINK = DATA_SOURCE.parent.parent / 'output'
+MODEL_SINK = PRED_SINK.parent / 'models'
 
 # bsat map
 BSAT_MAP = {
