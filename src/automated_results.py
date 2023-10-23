@@ -12,13 +12,25 @@ from utils import metrics
 from utils.experiments import get_bh_integral_from_two_mats
 import shutil
 import os
+import json
 
 DATA_SOURCE = Path.cwd().parent / 'data' / 'input' / 'raw'
 VAL_SOURCE = DATA_SOURCE.parent / 'validation'
+#VAL_SOURCE = DATA_SOURCE.parent / 'validation_full_dataset'
 PROC_SOURCE = DATA_SOURCE.parent/ "processed"
 PREDS_SINK = PROC_SOURCE.parent.parent / 'output'
-MODELS_SINK = PREDS_SINK.parent / 'models' / 'kfold_1_subsamples_4_cherrypicking'
-#MODELS_SINK = PREDS_SINK.parent / 'models' / 'kfold_4_subsamples_4_cherrypicking'
+#MODELS_SINK = PREDS_SINK.parent / 'models' / '2023-10-20_No_Limit'
+MODELS_SINK = PREDS_SINK.parent / 'models' / 'kfold_4_subsamples_4_cherrypicking'
+JSON_OUT = Path.cwd().parent / 'data'
+
+
+with open(os.path.join(JSON_OUT, 'b_max_dict.json')) as json_data:
+    b_max_dict = json.load(json_data)
+with open(os.path.join(JSON_OUT, 'h_max_dict.json')) as json_data:
+    h_max_dict = json.load(json_data)
+
+print(f"{b_max_dict = }")
+print(f"{h_max_dict = }")
 
 def local_average(preds, gtruth):
     """Render a visual report as requested by the MagNet Challenge hosts, see
@@ -153,10 +165,8 @@ for count_model, model in enumerate(MODELS_SINK.glob("*.pt")):
         for c in ds
         if c not in ["ploss", "kfold", "material"] and not c.startswith(("B_t_", "H_t_"))
     ]
-    b_limit = np.abs(ds.loc[:, B_COLS].to_numpy()).max()  # T
-    h_limit = min(
-        np.abs(ds.loc[:, H_COLS].to_numpy()).max(), 150
-    )  # A/m
+    b_limit = b_max_dict[material_name]
+    h_limit = h_max_dict[material_name]
     b_limit_per_profile = (
         np.abs(ds.loc[:, B_COLS].to_numpy())
         .max(axis=1)
