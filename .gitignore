@@ -10,3 +10,8 @@
 venv/
 .ipynb_checkpoints/
 __pycache__/
+data/output/
+data/models/
+data/input/validation/
+.eggs/
+*.egg-info/
