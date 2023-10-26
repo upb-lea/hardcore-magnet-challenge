@@ -14,12 +14,24 @@ import shutil
 import os
 import json
 
+# This script can be applied on the model-folder of the trained models.
+# The model folder typically includes
+# - .pt models for all materials
+# - .pt models on 4 folds
+# - .pt models on different seeds
+# This script uses the input data VAL_SOURCE and gives it to all available models in the MODELS_SINK-Folder.
+# The best model for each material is cherrypicked and stored into the subfolder 'best_models'
+# Also, in this folder, there is the automated report saved.
+
+
 DATA_SOURCE = Path.cwd().parent / 'data' / 'input' / 'raw'
+
+# Choose the data source, if you want to do the report on the full dataset or on the validation data set
 VAL_SOURCE = DATA_SOURCE.parent / 'validation'
 #VAL_SOURCE = DATA_SOURCE.parent / 'validation_full_dataset'
+
 PROC_SOURCE = DATA_SOURCE.parent/ "processed"
 PREDS_SINK = PROC_SOURCE.parent.parent / 'output'
-#MODELS_SINK = PREDS_SINK.parent / 'models' / '2023-10-20_No_Limit'
 MODELS_SINK = PREDS_SINK.parent / 'models' / 'kfold_4_subsamples_4_cherrypicking'
 JSON_OUT = Path.cwd().parent / 'data'
 
