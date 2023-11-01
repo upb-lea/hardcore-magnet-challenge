@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import List, Tuple, Optional
+
 
 class Biased_Elu(nn.Module):
     def __init__(self):
@@ -176,3 +176,20 @@ class TCNWithScalarsAsBias(nn.Module):
         return y
 
 
+class LossPredictor(nn.Module):
+    def __init__(self, h_predictor, ):
+        super().__init__()
+        self.h_predictor = h_predictor
+        #self.coeffs = nn.Parameter(torch.Tensor(3)) # scalings for f, B, H
+
+    def forward(self, x_ts, x_scalars, b_lim, h_lim, freq_scale):
+        h_pred = self.h_predictor(x_ts, x_scalars).permute(2, 0, 1)
+        freq = freq_scale * torch.exp(x_scalars[:, [0]])
+        scaled_b = x_ts[:, [-1], :].permute(2, 0, 1)  # globally scaled B curve
+        b_with_offset =  b_lim * scaled_b + 5  # arbitrary
+        h_with_offset =  h_lim * h_pred + 5 # arbitrary
+        ploss_pred = freq * 0.5 * torch.abs(
+            torch.sum(b_with_offset * 
+               (torch.roll(h_with_offset, 1, dims=0) - torch.roll(h_with_offset, -1, dims=0)),
+                dim=0))  # shoelace formula, polygon area
+        return torch.log(ploss_pred), h_pred

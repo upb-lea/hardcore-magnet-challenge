@@ -31,7 +31,8 @@ def conduct_recurrent_training():
 
 
 def get_bh_integral(df):
-    """Given the B and H curve in the pandas DataFrame df, calculate the area within the polygon"""
+    """Given the B and H curve as well as the frequency in the pandas DataFrame df,
+      calculate the area within the polygon"""
     # offset polygon into first quadrant
     b, h = (
         df.loc[:, [f"B_t_{k}" for k in range(1024)]].to_numpy() + 0.5,  # T
@@ -44,11 +45,14 @@ def get_bh_integral(df):
     )  # shoelace formula
 
 def get_bh_integral_from_two_mats(freq, b, h):
-    """ b and h are shape (#samples, #timesteps)"""
+    """ b and h are numpy matrices with shape (#samples, #timesteps)"""
     # offset b and h into first quadrant
     h_with_offset = h + 300 # A/m
     b_with_offset = b + 0.5 # T
-    return freq.ravel() * 0.5 * np.abs(np.sum(b_with_offset * (np.roll(h_with_offset, 1, axis=1) - np.roll(h_with_offset, -1, axis=1)), axis=1))
+    return freq.ravel() * 0.5 * np.abs(
+        np.sum(b_with_offset * 
+               (np.roll(h_with_offset, 1, axis=1) - np.roll(h_with_offset, -1, axis=1)),
+                axis=1))
 
 def get_stratified_fold_indices(df, n_folds):
     """Given a Pandas Dataframe df, return a Pandas Series with the kfold labels for the test set.
