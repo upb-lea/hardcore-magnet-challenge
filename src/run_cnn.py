@@ -131,6 +131,7 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
             logs = {
                 "loss_trends_train": [[] for _ in range(K_KFOLD)],
                 "loss_trends_val": [[] for _ in range(K_KFOLD)],
+                "loss_trends_train_p": [[] for _ in range(K_KFOLD)],
                 "model_scripted": [],
                 "start_time": pd.Timestamp.now().round(freq="S"),
                 "performance": None,
@@ -167,7 +168,6 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                     .reshape(-1, 1)
                 )
                 h_limit = h_limit * b_limit_per_profile / b_limit
-            
 
             for kfold_lbl, test_fold_df in mat_df_proc.groupby("kfold"):
                 if K_KFOLD > 1:
@@ -188,13 +188,13 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                     b_limit_fold = b_limit
                     b_limit_fold_pp = None
                     h_limit_fold = h_limit
-                
+
                 if predict_ploss_directly:
                     # store ln ploss mean and std for normalization
                     # TODO: not sure whether standardizing is helpful here
-                    #log_ploss = np.log(train_fold_df.ploss.to_numpy())
-                    ln_ploss_mean = 0 #np.mean(log_ploss)
-                    ln_ploss_std = 1 #np.std(log_ploss)
+                    # log_ploss = np.log(train_fold_df.ploss.to_numpy())
+                    ln_ploss_mean = 0  # np.mean(log_ploss)
+                    ln_ploss_std = 1  # np.std(log_ploss)
                 else:
                     ln_ploss_mean = 0
                     ln_ploss_std = 1
@@ -204,8 +204,8 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                     b_limit_fold,
                     h_limit_fold,
                     b_limit_pp=b_limit_fold_pp,
-                    #ln_ploss_mean=ln_ploss_mean,
-                    #ln_ploss_std=ln_ploss_std
+                    # ln_ploss_mean=ln_ploss_mean,
+                    # ln_ploss_std=ln_ploss_std
                 )
                 n_ts = (
                     train_tensor_ts.shape[-1] - 2
@@ -232,14 +232,24 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                 )
                 val_tensor_ts = val_tensor_ts.to(device)
                 val_tensor_scalar = val_tensor_scalar.to(device)
-                
+
                 if predict_ploss_directly:
                     # prepare torch tensors for normalization scales
-                    b_limit_fold_torch = torch.as_tensor(b_limit_fold, dtype=torch.float32).to(device)
-                    h_limit_fold_torch = torch.as_tensor(h_limit_fold, dtype=torch.float32).to(device)
-                    b_limit_test_fold_torch = torch.as_tensor(b_limit_test_fold, dtype=torch.float32).to(device)
-                    h_limit_test_fold_torch = torch.as_tensor(h_limit_test_fold, dtype=torch.float32).to(device)
-                    freq_scale_torch = torch.as_tensor(FREQ_SCALE, dtype=torch.float32).to(device)
+                    b_limit_fold_torch = torch.as_tensor(
+                        b_limit_fold, dtype=torch.float32
+                    ).to(device)
+                    h_limit_fold_torch = torch.as_tensor(
+                        h_limit_fold, dtype=torch.float32
+                    ).to(device)
+                    b_limit_test_fold_torch = torch.as_tensor(
+                        b_limit_test_fold, dtype=torch.float32
+                    ).to(device)
+                    h_limit_test_fold_torch = torch.as_tensor(
+                        h_limit_test_fold, dtype=torch.float32
+                    ).to(device)
+                    freq_scale_torch = torch.as_tensor(
+                        FREQ_SCALE, dtype=torch.float32
+                    ).to(device)
 
                 # init model
                 mdl = TCNWithScalarsAsBias(
@@ -248,11 +258,12 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                     tcn_layer_cfg=None,
                     scalar_layer_cfg=None,
                 )
+                loss_h = torch.nn.MSELoss().to(device)
+                opt_h = torch.optim.NAdam(mdl.parameters(), lr=1e-3)
                 if predict_ploss_directly:
                     mdl = LossPredictor(mdl)
-
-                loss = torch.nn.MSELoss().to(device)
-                opt = torch.optim.NAdam(mdl.parameters(), lr=1e-3)
+                    loss_p = torch.nn.MSELoss().to(device)
+                    opt_p = torch.optim.NAdam(mdl.post_processor.parameters(), lr=1e-3)
                 pbar = trange(
                     N_EPOCHS,
                     desc=f"Seed {rep}, fold {kfold_lbl}",
@@ -262,16 +273,18 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                 )
                 if rep == 0 and kfold_lbl == 0 and m_i == 0:  # print only once
                     info_input = [
-                            torch.ones(
-                                (1, 1 + int(per_profile_norm) * n_ts, len(H_COLS)),
-                                dtype=torch.float32,
-                            ),
-                            torch.ones((1, len(x_cols)), dtype=torch.float32),
-                        ]
+                        torch.ones(
+                            (1, 1 + int(per_profile_norm) * n_ts, len(H_COLS)),
+                            dtype=torch.float32,
+                        ),
+                        torch.ones((1, len(x_cols)), dtype=torch.float32),
+                    ]
                     if predict_ploss_directly:
-                        info_input += [torch.ones(1, 1, dtype=torch.float32),
-                                       torch.ones(1, 1, dtype=torch.float32),
-                                       torch.tensor(1)]
+                        info_input += [
+                            torch.ones(1, 1, dtype=torch.float32),
+                            torch.ones(1, 1, dtype=torch.float32),
+                            torch.tensor(1),
+                        ]
                     mdl_info = ti_summary(
                         mdl,
                         input_data=info_input,
@@ -292,17 +305,18 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                 idx_mat = np.vstack(idx_mat)
 
                 # Training loop
-                val_loss = None
+                val_loss_h = None
+                val_loss_p = None
                 for i_epoch in pbar:
                     mdl.train()
                     # shuffle profiles
                     indices = idx_mat[i_epoch]
                     train_tensor_ts_shuffled = train_tensor_ts[:, indices, :]
                     train_tensor_scalar_shuffled = train_tensor_scalar[indices, :]
-                    
+
                     if predict_ploss_directly:
                         h_lim_shuffled = h_limit_fold_torch[indices, :]
-                        
+
                     for i_batch in range(int(np.ceil(n_profiles / BATCH_SIZE))):
                         # extract mini-batch
                         start_marker = i_batch * BATCH_SIZE
@@ -323,31 +337,49 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                             :, :-1
                         ]  # exclude ploss on last column
                         if predict_ploss_directly:
-                            # TODO think of how to include the intermediate H field prediction
-                            g_truth_interm = train_tensor_ts_shuffled_n_batched[
-                                :, :, [-1]
-                            ]  # h field as intermediate target
-                            g_truth = train_tensor_scalar_shuffled_n_batched[:, [-1]]
+                            # h field as intermediate target
+                            h_g_truth = train_tensor_ts_shuffled_n_batched[:, :, [-1]]
+                            p_g_truth = train_tensor_scalar_shuffled_n_batched[:, [-1]]
                             output_p, output_h = mdl(
-                                X_tensor_ts.permute(1, 2, 0), X_tensor_scalar,
+                                X_tensor_ts.permute(1, 2, 0),
+                                X_tensor_scalar,
                                 b_limit_fold_torch,
                                 h_lim_shuffled[start_marker:end_marker],
-                                freq_scale_torch
+                                freq_scale_torch,
                             )
-                            train_loss = loss(output_p, g_truth) + loss(output_h, g_truth_interm)
+                            train_loss_h = loss_h(output_h, h_g_truth)
+                            if i_epoch >= N_EPOCHS//2:
+                                train_loss_p = loss_p(output_p, p_g_truth)
+                                train_loss_p.backward(
+                                    retain_graph=True,
+                                    inputs=list(mdl.post_processor.parameters()),
+                                )
+
+                            train_loss_h.backward(
+                                inputs=list(mdl.h_predictor.parameters())
+                            )
+                            if i_epoch >= N_EPOCHS//2:
+                                opt_p.step()
+                            opt_h.step()
                         else:
                             g_truth = train_tensor_ts_shuffled_n_batched[:, :, [-1]]
                             output_h = mdl(
                                 X_tensor_ts.permute(1, 2, 0), X_tensor_scalar
                             ).permute(2, 0, 1)
-                            train_loss = loss(output_h, g_truth)
-                        train_loss.backward()
-                        opt.step()
+                            train_loss_h = loss_h(output_h, g_truth)
+                            train_loss_h.backward()
+                            opt_h.step()
                     with torch.no_grad():
                         logs["loss_trends_train"][kfold_lbl].append(
-                            train_loss.cpu().item()
+                            train_loss_h.cpu().item()
                         )
-                        pbar_str = f"Loss {train_loss.cpu().item():.2e} | val loss {val_loss if val_loss is not None else -1.0:.2e}"
+                        if predict_ploss_directly:
+                            logs["loss_trends_train_p"][kfold_lbl].append(
+                                train_loss_p.cpu().item() if i_epoch >= N_EPOCHS//2 else 1.0
+                            )
+                            pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {logs['loss_trends_train_p'][kfold_lbl][-1]:.2e}"
+                        else:
+                            pbar_str = f"Loss {train_loss_h.cpu().item():.2e} | val loss {val_loss_h if val_loss_h is not None else -1.0:.2e}"
 
                     if K_KFOLD > 1:
                         do_validate = i_epoch % 10 == 0 or i_epoch == N_EPOCHS - 1
@@ -355,55 +387,67 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
                         do_validate = i_epoch == N_EPOCHS - 1
                     if do_validate:
                         # validation set
-                        
-
                         mdl.eval()
                         with torch.no_grad():
                             if predict_ploss_directly:
                                 val_pred_p, val_pred_h = mdl(
                                     val_tensor_ts[:, :, :-1].permute(1, 2, 0),
                                     val_tensor_scalar[:, :-1],
-                                    b_limit_test_fold_torch, h_limit_test_fold_torch,
-                                    freq_scale_torch
+                                    b_limit_test_fold_torch,
+                                    h_limit_test_fold_torch,
+                                    freq_scale_torch,
                                 )
-                                val_g_truth = val_tensor_scalar[:, [-1]]
+
                                 val_h_g_truth = val_tensor_ts[:, :, [-1]]
-                                val_loss = loss(val_pred_p, val_g_truth).cpu().item() +\
-                                            loss(val_pred_h, val_h_g_truth).cpu().item()
+                                # TODO track val loss on p too
+                                # val_p_g_truth = val_tensor_scalar[:, [-1]]
+                                # val_loss_p =  loss_p(val_pred_p, val_p_g_truth).cpu().item()
+                                val_loss_h = (
+                                    loss_h(val_pred_h, val_h_g_truth).cpu().item()
+                                )
                             else:
                                 val_pred_h = mdl(
                                     val_tensor_ts[:, :, :-1].permute(1, 2, 0),
                                     val_tensor_scalar[:, :-1],
                                 ).permute(2, 0, 1)
-                                val_g_truth = val_tensor_ts[:, :, [-1]]
-                                val_loss = loss(val_pred_h, val_g_truth).cpu().item()
-                            logs["loss_trends_val"][kfold_lbl].append(val_loss)
-                        if np.isnan(val_loss):
+                                val_h_g_truth = val_tensor_ts[:, :, [-1]]
+                                val_loss_h = (
+                                    loss_h(val_pred_h, val_h_g_truth).cpu().item()
+                                )
+                            logs["loss_trends_val"][kfold_lbl].append(val_loss_h)
+                        if np.isnan(val_loss_h):
                             break
-                    if val_loss is not None:
+                    if val_loss_h is not None:
                         with torch.no_grad():
-                            pbar_str = f"Loss {train_loss.cpu().item():.2e} | val loss {val_loss:.2e}"
+                            if predict_ploss_directly:
+                                pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {logs['loss_trends_train_p'][kfold_lbl][-1]:.2e}"
+                            else:
+                                pbar_str = f"Loss {train_loss_h.cpu().item():.2e} | val loss {val_loss_h if val_loss_h is not None else -1.0:.2e}"
 
                     pbar.set_postfix_str(pbar_str)
 
                     if half_lr_at is not None:
                         if i_epoch in half_lr_at:
-                            for group in opt.param_groups:
+                            for group in opt_h.param_groups:
                                 group["lr"] *= 0.75
+                            if predict_ploss_directly:
+                                for group in opt_p.param_groups:
+                                    group["lr"] *= 0.75
                     if i_epoch == N_EPOCHS - 1:  # last epoch
                         with torch.inference_mode():  # take last epoch's model as best model
                             val_tensor_ts_np = val_tensor_ts.cpu().numpy()
                             val_tensor_scalars_np = val_tensor_scalar.cpu().numpy()
                             h_pred_val_np = (
-                                    val_pred_h.squeeze().cpu().numpy().T
-                                    * h_limit_test_fold
-                                )
+                                val_pred_h.squeeze().cpu().numpy().T * h_limit_test_fold
+                            )
                             if predict_ploss_directly:
                                 results_df.loc[
                                     results_df.kfold == kfold_lbl, "pred"
-                                ] = np.exp(val_pred_p.cpu().numpy()*ln_ploss_std + ln_ploss_mean)
-                            else: 
-                                
+                                ] = np.exp(
+                                    val_pred_p.cpu().numpy() * ln_ploss_std
+                                    + ln_ploss_mean
+                                )
+                            else:
                                 results_df.loc[
                                     results_df.kfold == kfold_lbl, "pred"
                                 ] = get_bh_integral_from_two_mats(
@@ -440,7 +484,6 @@ def main(ds=None, start_seed=0, per_profile_norm=False, predict_ploss_directly=F
         logs_d[material_lbl] = [
             run_dyn_training(i) for i in range(start_seed, n_seeds + start_seed)
         ]
-        
 
     return logs_d
 
