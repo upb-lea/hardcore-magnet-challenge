@@ -181,7 +181,7 @@ class TCNWithScalarsAsBias(nn.Module):
         }
         # build CNN layer path
         cnn_layers = []
-        dilation_offset = tcn_layer_cfg.get("starting_dilation_rate", 0)  # >= 0
+        dilation_offset = tcn_layer_cfg.get("starting_dilation_rate", 2)  # >= 0
         for i, l_cfg in enumerate(tcn_layer_cfg["f"]):
             kernel_size = l_cfg.get("kernel_size", 9)
             dropout_rate = tcn_layer_cfg.get("dropout", 0.0)
@@ -275,9 +275,9 @@ class LossPredictor(nn.Module):
         super().__init__()
         self.h_predictor = h_predictor
         self.post_processor = nn.Sequential(
-            nn.Linear(self.h_predictor.num_input_scalar, 1), 
-            #nn.Tanh(),
-            #nn.Linear(4, 1),
+            nn.Linear(self.h_predictor.num_input_scalar, 8), 
+            nn.Tanh(),
+            nn.Linear(8, 1),
             nn.Tanh()
         )
 

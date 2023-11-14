@@ -19,6 +19,12 @@ BSAT_MAP = {
     "N30": 0.38,
     "N49": 0.49,
     "N87": 0.49,
+    #TODO what are new values for new materials?
+    'A': 1,
+    'B': 1,
+    'C': 1,
+    'D': 1,
+    'E': 1,
 }
 
 def shuffle_phases(mat):
