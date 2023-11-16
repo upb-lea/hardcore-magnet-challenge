@@ -23,6 +23,18 @@ import json
 # The best model for each material is cherrypicked and stored into the subfolder 'best_models'
 # Also, in this folder, there is the automated report saved.
 
+# In case of you are the challenge host, and receive this script, the mentioned cherrypicking has already been performed.
+# Just run the script again to re-generate the report we have sent to you.
+# Please note about the folder structure
+# Magnet-challenge folder
+#  + data
+#  |    + input
+#  |    |    + raw (raw data of full dataset)
+#  |    |    + validation (validation data set)
+#  |    |    + processed (here is the pre-processed input dataset, which is loaded in this script)
+#  |    + models (insert the models here)
+#  + src
+
 
 DATA_SOURCE = Path.cwd().parent / 'data' / 'input' / 'raw'
 
@@ -32,7 +44,7 @@ VAL_SOURCE = DATA_SOURCE.parent / 'validation'
 
 PROC_SOURCE = DATA_SOURCE.parent/ "processed"
 PREDS_SINK = PROC_SOURCE.parent.parent / 'output'
-MODELS_SINK = PREDS_SINK.parent / 'models' / 'kfold_4_subsamples_4_cherrypicking'
+MODELS_SINK = PREDS_SINK.parent / 'models' / '2023-11-02_Submission_Due'
 JSON_OUT = Path.cwd().parent / 'data'
 
 
@@ -132,6 +144,7 @@ result_dict_h_pred_val = {}
 result_dict_model_name = {}
 
 for count_model, model in enumerate(MODELS_SINK.glob("*.pt")):
+    print(f"{model = }")
     mdl = torch.jit.load(model)
     mdl.eval()
 
@@ -163,12 +176,14 @@ for count_model, model in enumerate(MODELS_SINK.glob("*.pt")):
     full_b = ds.loc[:, B_COLS].to_numpy()
     dbdt = full_b[:, 1:] - full_b[:, :-1]
     b_peak2peak = full_b.max(axis=1) - full_b.min(axis=1)
+    # frequency = ds.loc[:, 'freq'].to_numpy()
     ds = ds.assign(
         b_peak2peak=b_peak2peak,
         log_peak2peak=np.log(b_peak2peak),
         mean_abs_dbdt=np.mean(np.abs(dbdt), axis=1),
         log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
         db_bsat=b_peak2peak / ds.material.map(BSAT_MAP),
+        # log_frequency = np.log(frequency)
     )
 
     # construct tensors

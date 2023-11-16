@@ -60,7 +60,7 @@ for k, v in data_d.items():
 
 val_ds = pd.concat(dfs, ignore_index=True)
 
-for count_model, material_name in enumerate(['3C90', '3C94', '3E6', '3F4', '77', '78', 'N27', 'N30', 'N49', 'N87']):
+for count_model, material_name in enumerate(['3C90', '3C94', '3E6', '3F4', '77', '78', 'Material A', 'Material B', 'Material C', 'Material D', 'Material E', 'N27', 'N30', 'N49', 'N87']):
     ds = val_ds.query(f"material == '{material_name}'").reset_index(drop=True)
     waveforms = get_waveform_est(
         ds.loc[:, [f"B_t_{k}" for k in range(1024)]].to_numpy()
