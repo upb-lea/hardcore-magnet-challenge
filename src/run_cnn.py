@@ -28,7 +28,7 @@ pd.set_option("display.max_columns", None)
 DEBUG = False
 N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 5 if DEBUG else 20  # how often should the full data set be iterated over
+N_EPOCHS = 5 if DEBUG else 2000 # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = 1  # every n-th sample along the time axis is considered
 FREQ_SCALE = 150_000  # in Hz
