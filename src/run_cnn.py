@@ -28,7 +28,7 @@ pd.set_option("display.max_columns", None)
 DEBUG = False
 N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 5 if DEBUG else 2000  # how often should the full data set be iterated over
+N_EPOCHS = 5 if DEBUG else 2000 # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = 1  # every n-th sample along the time axis is considered
 FREQ_SCALE = 150_000  # in Hz
@@ -128,6 +128,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
         Nested dict with experimental results for all seeds and materials
     """
     device = torch.device("cuda")
+    # device = torch.device("cpu")
     if ds is None:
         if new_materials:
             ds = load_new_materials_for_training()
@@ -325,6 +326,8 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                 idx_mat = np.vstack(idx_mat)
 
                 # Training loop
+                df_loss_per_model = pd.DataFrame(columns=['epoch', 'validation_loss_h', 'training_loss_h',
+                                                          'validation_loss_p', 'training_loss_p'])
                 val_loss_h = None
                 val_loss_p = None
                 for i_epoch in pbar:
@@ -486,8 +489,15 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                                 results_df.kfold == kfold_lbl,
                                 [c for c in results_df if c.startswith("h_pred_")],
                             ] = h_pred_val_np
+                    df_epoch_to_append = pd.DataFrame(
+                        data={'epoch': i_epoch, 'validation_loss_h': val_loss_h, 'training_loss_h': train_loss_h.cpu().item(),
+                              'validation_loss_p': val_loss_p, 'training_loss_p': train_loss_p.cpu().item()},
+                        index=[0])
+                    df_loss_per_model = pd.concat([df_loss_per_model, df_epoch_to_append], axis=0, ignore_index=True)
                 # end of fold
                 logs["model_scripted"].append(torch.jit.script(mdl.cpu()))
+                df_loss_per_model.to_csv(MODEL_SINK / (f"cnn_{material_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_"
+                   f"score__seed_{rep}_fold_{kfold_lbl}.csv"))
 
             # book keeping
             logs["performance"] = calculate_metrics(
