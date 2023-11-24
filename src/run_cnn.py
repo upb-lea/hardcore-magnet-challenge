@@ -104,6 +104,8 @@ def construct_tensor_seq2seq(
     # return ts tensor with shape: (#time steps, #profiles, #features), and scalar tensor with (#profiles, #features)
     return torch.dstack(tens_l), torch.tensor(X.to_numpy(), dtype=torch.float32)
 
+# TODO check handling of b_max / h_max
+# TODO check inference script for new data set.
 
 def main(ds=None, start_seed=0, predict_ploss_directly=False,
          new_materials=False):
@@ -168,7 +170,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                 [
                     results_df,
                     pd.DataFrame(
-                        np.zeros((len(results_df), len(H_PRED_COLS))),
+                        np.zeros((len(results_df), len(H_PRED_COLS)), dtype=np.float32),
                         columns=H_PRED_COLS,
                     ),
                 ],
