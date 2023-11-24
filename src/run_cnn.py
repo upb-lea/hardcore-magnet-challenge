@@ -30,10 +30,14 @@ N_SEEDS = 3  # how often should the experiment be repeated with different random
 N_JOBS = 1  # how many processes should be working
 N_EPOCHS = 2 if DEBUG else 2000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
-SUBSAMPLE_FACTOR = 1  # every n-th sample along the time axis is considered
+SUBSAMPLE_FACTOR = (
+    8 if DEBUG else 1
+)  # every n-th sample along the time axis is considered
 FREQ_SCALE = 150_000  # in Hz
 K_KFOLD = 1 if DEBUG else 4  # how many folds in cross validation
-BATCH_SIZE = 4 if DEBUG else 64  # how many periods/profiles/measurements should be averaged across for a weight update
+BATCH_SIZE = (
+    4 if DEBUG else 64
+)  # how many periods/profiles/measurements should be averaged across for a weight update
 DO_PREDICT_P_DIRECTLY = True  # Whether to extend the topology to predict p loss with a parameterized model on top
 
 B_COLS = ALL_B_COLS[::SUBSAMPLE_FACTOR]
@@ -108,7 +112,6 @@ def construct_tensor_seq2seq(
 # TODO check handling of b_max / h_max
 # TODO check inference script for new data set.
 # TODO check report generation for new materials
-# TODO check whether old materials can still train (NF said they don't)
 
 
 def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=False):
@@ -139,7 +142,13 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
             ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
     if DEBUG:
         debug_mats = DEBUG_MATERIALS["new"] if new_materials else DEBUG_MATERIALS["old"]
-        ds = ds.query("material in @debug_mats")
+        ds = pd.concat(
+            [
+                d.iloc[:10, :]
+                for _, d in ds.query("material in @debug_mats").groupby("material")
+            ],
+            ignore_index=True,
+        )
 
     logs_d = {}
 
@@ -169,7 +178,9 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                 "performance": None,
             }
             # training result container
-            results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(pred=0)
+            results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(
+                pred=np.float32(0.0)
+            )
             results_df = pd.concat(
                 [
                     results_df,
@@ -187,15 +198,15 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                 if c not in ["ploss", "kfold"] and not c.startswith(("B_t_", "H_t_"))
             ]
 
-            # store max elongation for normalization
+            # calculate max elongation for normalization
             b_limit = np.abs(mat_df_proc.loc[:, B_COLS].to_numpy()).max()  # T
             h_limit = min(
                 np.abs(mat_df_proc.loc[:, H_COLS].to_numpy()).max(), 150
             )  # A/m
 
             # normalize on a per-profile base
-            b_limit_per_profile = (
-                np.abs(mat_df_proc.loc[:, B_COLS].to_numpy()).max(axis=1).reshape(-1, 1)
+            b_limit_per_profile = np.abs(mat_df_proc.loc[:, B_COLS].to_numpy()).max(
+                axis=1, keepdims=True
             )
             h_limit = h_limit * b_limit_per_profile / b_limit
 
@@ -376,14 +387,6 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                             )
                             train_loss_h = loss_h(output_h, h_g_truth)
                             train_loss_p = loss_p(output_p, p_g_truth)
-                            """train_loss_p.backward(
-                                retain_graph=True,
-                                inputs=list(mdl.post_processor.parameters()),
-                            )
-
-                            train_loss_h.backward(
-                                inputs=list(mdl.h_predictor.parameters())
-                            )"""
                             loss = (
                                 h_loss_weight * train_loss_h
                                 + p_loss_weight * train_loss_p
@@ -469,13 +472,15 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                             val_tensor_scalars_np = val_tensor_scalar.cpu().numpy()
                             h_pred_val_np = (
                                 val_pred_h.squeeze().cpu().numpy().T * h_limit_test_fold
-                            )
+                            ).astype(np.float32)
                             if predict_ploss_directly:
                                 results_df.loc[
                                     results_df.kfold == kfold_lbl, "pred"
                                 ] = np.exp(
                                     val_pred_p.cpu().numpy() * ln_ploss_std
                                     + ln_ploss_mean
+                                ).astype(
+                                    np.float32
                                 )
                             else:
                                 results_df.loc[
@@ -487,6 +492,8 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                                     * FREQ_SCALE,
                                     b=val_tensor_ts_np[:, :, -2].T * b_limit_test_fold,
                                     h=h_pred_val_np,
+                                ).astype(
+                                    np.float32
                                 )
                             results_df.loc[
                                 results_df.kfold == kfold_lbl,

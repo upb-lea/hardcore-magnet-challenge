@@ -27,14 +27,6 @@ BSAT_MAP = {
     'E': 1,
 }
 
-def shuffle_phases(mat):
-    """mat: shape (N,T) with N = mini-batch size and T = period length"""
-    pass
-
-
-def conduct_recurrent_training():
-    pass
-
 
 def get_bh_integral(df):
     """Given the B and H curve as well as the frequency in the pandas DataFrame df,
