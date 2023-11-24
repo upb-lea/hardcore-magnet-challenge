@@ -1,6 +1,7 @@
 """Run convolutional neural networks """
 import pandas as pd
 import numpy as np
+from uuid import uuid4
 from tqdm import trange, tqdm
 from joblib import delayed, Parallel
 from pprint import pprint
@@ -638,10 +639,12 @@ if __name__ == "__main__":
             )
             # store jitted models
             for fold_i, scripted_mdl in enumerate(seed_log["model_scripted"]):
+                # assign uuid
+                mdl_uid = str(uuid4())[:8]
                 scripted_mdl.save(
                     MODEL_SINK
                     / (
-                        f"cnn_{mat_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_"
+                        f"cnn_{mat_lbl}_uuid_{mdl_uid}_{datetime.now().strftime('%d-%b-%Y_%H:%M')}_"
                         f"score_{seed_log['performance']['avg-abs-rel-err']*100:.2f}_seed_{seed_i}_fold_{fold_i}.pt"
                     )
                 )
@@ -649,7 +652,7 @@ if __name__ == "__main__":
     pd.concat(seed_learning_trends_l, axis=0, ignore_index=True).to_csv(
         PRED_SINK
         / (
-            f"learning_curves_cnn_{mat_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_"
+            f"learning_curves_cnn_{mat_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M')}_"
             f"score_{seed_log['performance']['avg-abs-rel-err']*100:.2f}_seed_{seed_i}_fold_{fold_i}.csv"
         )
     )

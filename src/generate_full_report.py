@@ -1,7 +1,18 @@
-import os.path
+"""
+ This script can be applied on the model-folder of the trained models.
+ The model folder typically includes
+ - .pt models for all materials
+ - .pt models on 4 folds
+ - .pt models on different seeds
+ This script uses the input data VAL_SOURCE and gives it to all available models in the MODELS_SINK-Folder.
+ The best model for each material is cherrypicked and stored into the subfolder 'best_models'
+ Morever, the automated report is saved in the same subfolder.
 
+ In case you are the challenge host reading this script, the mentioned cherrypicking has already been performed.
+ Just run the script again to re-generate the report we have sent to you.
+"""
 from utils.experiments import get_waveform_est, BSAT_MAP
-from run_cnn import B_COLS, H_COLS, construct_tensor_seq2seq
+from run_cnn_training import B_COLS, H_COLS, construct_tensor_seq2seq
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,26 +25,7 @@ import shutil
 import os
 import json
 
-# This script can be applied on the model-folder of the trained models.
-# The model folder typically includes
-# - .pt models for all materials
-# - .pt models on 4 folds
-# - .pt models on different seeds
-# This script uses the input data VAL_SOURCE and gives it to all available models in the MODELS_SINK-Folder.
-# The best model for each material is cherrypicked and stored into the subfolder 'best_models'
-# Also, in this folder, there is the automated report saved.
 
-# In case of you are the challenge host, and receive this script, the mentioned cherrypicking has already been performed.
-# Just run the script again to re-generate the report we have sent to you.
-# Please note about the folder structure
-# Magnet-challenge folder
-#  + data
-#  |    + input
-#  |    |    + raw (raw data of full dataset)
-#  |    |    + validation (validation data set)
-#  |    |    + processed (here is the pre-processed input dataset, which is loaded in this script)
-#  |    + models (insert the models here)
-#  + src
 
 
 DATA_SOURCE = Path.cwd().parent / 'data' / 'input' / 'raw'
@@ -48,9 +40,9 @@ MODELS_SINK = PREDS_SINK.parent / 'models' / '2023-11-02_Submission_Due'
 JSON_OUT = Path.cwd().parent / 'data'
 
 
-with open(os.path.join(JSON_OUT, 'b_max_dict.json')) as json_data:
+with open(JSON_OUT / 'b_max_dict.json') as json_data:
     b_max_dict = json.load(json_data)
-with open(os.path.join(JSON_OUT, 'h_max_dict.json')) as json_data:
+with open(JSON_OUT / 'h_max_dict.json') as json_data:
     h_max_dict = json.load(json_data)
 
 print(f"{b_max_dict = }")
