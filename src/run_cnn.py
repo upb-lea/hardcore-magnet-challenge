@@ -25,22 +25,22 @@ from utils.data import load_new_materials_for_training, ALL_B_COLS, ALL_H_COLS
 
 pd.set_option("display.max_columns", None)
 
-DEBUG = False
+DEBUG = True
 N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 5 if DEBUG else 2000 # how often should the full data set be iterated over
+N_EPOCHS = 2 if DEBUG else 2000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = 1  # every n-th sample along the time axis is considered
 FREQ_SCALE = 150_000  # in Hz
 K_KFOLD = 1 if DEBUG else 4  # how many folds in cross validation
-BATCH_SIZE = 64  # how many periods/profiles/measurements should be averaged across for a weight update
-DO_PREDICT_P_DIRECTLY = True # Whether to extend the topology to predict p loss with a parameterized model on top
+BATCH_SIZE = 4 if DEBUG else 64  # how many periods/profiles/measurements should be averaged across for a weight update
+DO_PREDICT_P_DIRECTLY = True  # Whether to extend the topology to predict p loss with a parameterized model on top
 
 B_COLS = ALL_B_COLS[::SUBSAMPLE_FACTOR]
 H_COLS = ALL_H_COLS[::SUBSAMPLE_FACTOR]
 H_PRED_COLS = [f"h_pred_{i}" for i in range(1024 // SUBSAMPLE_FACTOR)]
-DEBUG_MATERIALS = {'old': ["3C90", "78"], 'new': ['A', 'B']}
-TRAIN_ON_NEW_MATERIALS = True
+DEBUG_MATERIALS = {"old": ["3C90", "78"], "new": ["A", "B"]}
+TRAIN_ON_NEW_MATERIALS = False
 
 
 def construct_tensor_seq2seq(
@@ -59,7 +59,7 @@ def construct_tensor_seq2seq(
     # normalization
     full_b /= b_limit
     full_h /= h_limit
-    orig_freq = X.loc[:, ['freq']].copy().to_numpy()
+    orig_freq = X.loc[:, ["freq"]].copy().to_numpy()
     X.loc[:, ["temp", "freq"]] /= np.array([75.0, FREQ_SCALE])
     X.loc[:, "freq"] = np.log(X.freq)
     other_cols = [c for c in x_cols if c not in ["temp", "freq"]]
@@ -104,13 +104,16 @@ def construct_tensor_seq2seq(
     # return ts tensor with shape: (#time steps, #profiles, #features), and scalar tensor with (#profiles, #features)
     return torch.dstack(tens_l), torch.tensor(X.to_numpy(), dtype=torch.float32)
 
+
 # TODO check handling of b_max / h_max
 # TODO check inference script for new data set.
+# TODO check report generation for new materials
+# TODO check whether old materials can still train (NF said they don't)
 
-def main(ds=None, start_seed=0, predict_ploss_directly=False,
-         new_materials=False):
+
+def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=False):
     """Main training loop for Residual CNNs
-    
+
     Args
     ----
     ds: pandas DataFrame
@@ -121,7 +124,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
         Adapt the topology to not only predict H field but also power loss P from the H prediction
     new_materials: bool
         Load old 10 materials or the 5 new materials
-    
+
     Returns
     -------
     logs_d : dict
@@ -135,7 +138,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
         else:
             ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
     if DEBUG:
-        debug_mats = DEBUG_MATERIALS['new'] if new_materials else DEBUG_MATERIALS['old']
+        debug_mats = DEBUG_MATERIALS["new"] if new_materials else DEBUG_MATERIALS["old"]
         ds = ds.query("material in @debug_mats")
 
     logs_d = {}
@@ -157,10 +160,10 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
             torch.manual_seed(rep)
 
             logs = {
-                "loss_trends_train": [[] for _ in range(K_KFOLD)],
-                "loss_trends_val": [[] for _ in range(K_KFOLD)],
-                "loss_trends_train_p": [[] for _ in range(K_KFOLD)],
-                'loss_trends_p_val': [[] for _ in range(K_KFOLD)],
+                "loss_trends_train_h": np.full((N_EPOCHS, K_KFOLD), np.nan),
+                "loss_trends_val_h": np.full((N_EPOCHS, K_KFOLD), np.nan),
+                "loss_trends_train_p": np.full((N_EPOCHS, K_KFOLD), np.nan),
+                "loss_trends_val_p": np.full((N_EPOCHS, K_KFOLD), np.nan),
                 "model_scripted": [],
                 "start_time": pd.Timestamp.now().round(freq="S"),
                 "performance": None,
@@ -189,16 +192,16 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
             h_limit = min(
                 np.abs(mat_df_proc.loc[:, H_COLS].to_numpy()).max(), 150
             )  # A/m
-            
+
             # normalize on a per-profile base
             b_limit_per_profile = (
-                np.abs(mat_df_proc.loc[:, B_COLS].to_numpy())
-                .max(axis=1)
-                .reshape(-1, 1)
+                np.abs(mat_df_proc.loc[:, B_COLS].to_numpy()).max(axis=1).reshape(-1, 1)
             )
             h_limit = h_limit * b_limit_per_profile / b_limit
 
-            for kfold_lbl, test_fold_df in mat_df_proc.groupby("kfold"):
+            for fold_i, (kfold_lbl, test_fold_df) in enumerate(
+                mat_df_proc.groupby("kfold")
+            ):
                 if K_KFOLD > 1:
                     train_fold_df = mat_df_proc.query("kfold != @kfold_lbl")
                 else:
@@ -212,7 +215,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                 b_limit_fold = b_limit
                 b_limit_fold_pp = b_limit_per_profile[train_idx]
                 h_limit_fold = h_limit[train_idx]
-                
+
                 if predict_ploss_directly:
                     # store ln ploss mean and std for normalization
                     # TODO: not sure whether standardizing is helpful here
@@ -232,7 +235,8 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                     # ln_ploss_std=ln_ploss_std
                 )
                 n_ts = (
-                    train_tensor_ts.shape[-1] - 2
+                    train_tensor_ts.shape[-1]
+                    - 2  # subtract original B curve and target time series
                 )  # number of time series per profile next to B curve
                 train_tensor_ts = train_tensor_ts.to(device)
                 train_tensor_scalar = train_tensor_scalar.to(device)
@@ -242,7 +246,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                 b_limit_test_fold = b_limit
                 b_limit_test_fold_pp = b_limit_per_profile[test_idx]
                 h_limit_test_fold = h_limit[test_idx]
-                
+
                 val_tensor_ts, val_tensor_scalar = construct_tensor_seq2seq(
                     test_fold_df,
                     x_cols,
@@ -274,16 +278,15 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                 # init model
                 mdl = TCNWithScalarsAsBias(
                     num_input_scalars=len(x_cols),
-                    num_input_ts=1+n_ts,
+                    num_input_ts=1 + n_ts,
                     tcn_layer_cfg=None,
                     scalar_layer_cfg=None,
                 )
                 loss_h = torch.nn.MSELoss().to(device)
-                # opt_h = torch.optim.NAdam(mdl.parameters(), lr=1e-3)
                 if predict_ploss_directly:
                     mdl = LossPredictor(mdl)
                     loss_p = torch.nn.MSELoss().to(device)
-                    # opt_p = torch.optim.NAdam(mdl.post_processor.parameters(), lr=1e-3)
+
                 opt = torch.optim.NAdam(mdl.parameters(), lr=1e-3)
                 pbar = trange(
                     N_EPOCHS,
@@ -326,8 +329,6 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                 idx_mat = np.vstack(idx_mat)
 
                 # Training loop
-                df_loss_per_model = pd.DataFrame(columns=['epoch', 'validation_loss_h', 'training_loss_h',
-                                                          'validation_loss_p', 'training_loss_p'])
                 val_loss_h = None
                 val_loss_p = None
                 for i_epoch in pbar:
@@ -398,14 +399,14 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                             train_loss_h.backward()
                             opt.step()
                     with torch.no_grad():
-                        logs["loss_trends_train"][kfold_lbl].append(
-                            train_loss_h.cpu().item()
-                        )
+                        logs["loss_trends_train_h"][
+                            i_epoch, fold_i
+                        ] = train_loss_h.cpu().item()
                         if predict_ploss_directly:
-                            logs["loss_trends_train_p"][kfold_lbl].append(
-                                train_loss_p.cpu().item()
-                            )
-                            pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {logs['loss_trends_train_p'][kfold_lbl][-1]:.2e}"
+                            logs["loss_trends_train_p"][
+                                i_epoch, fold_i
+                            ] = train_loss_p.cpu().item()
+                            pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {train_loss_p.cpu().item():.2e}"
                         else:
                             pbar_str = f"Loss {train_loss_h.cpu().item():.2e} | val loss {val_loss_h if val_loss_h is not None else -1.0:.2e}"
 
@@ -433,7 +434,9 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                                 val_loss_h = (
                                     loss_h(val_pred_h, val_h_g_truth).cpu().item()
                                 )
-                                logs["loss_trends_p_val"][kfold_lbl].append(val_loss_p)
+                                logs["loss_trends_val_p"][
+                                    i_epoch, kfold_lbl
+                                ] = val_loss_p
                             else:
                                 val_pred_h = mdl(
                                     val_tensor_ts[:, :, :-1].permute(1, 2, 0),
@@ -443,13 +446,13 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                                 val_loss_h = (
                                     loss_h(val_pred_h, val_h_g_truth).cpu().item()
                                 )
-                            logs["loss_trends_val"][kfold_lbl].append(val_loss_h)
+                            logs["loss_trends_val_h"][i_epoch, kfold_lbl] = val_loss_h
                         if np.isnan(val_loss_h):
                             break
                     if val_loss_h is not None:
                         with torch.no_grad():
                             if predict_ploss_directly:
-                                pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {logs['loss_trends_train_p'][kfold_lbl][-1]:.2e}"
+                                pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {train_loss_p.cpu().item():.2e}"
                             else:
                                 pbar_str = f"Loss {train_loss_h.cpu().item():.2e} | val loss {val_loss_h if val_loss_h is not None else -1.0:.2e}"
 
@@ -489,15 +492,8 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False,
                                 results_df.kfold == kfold_lbl,
                                 [c for c in results_df if c.startswith("h_pred_")],
                             ] = h_pred_val_np
-                    df_epoch_to_append = pd.DataFrame(
-                        data={'epoch': i_epoch, 'validation_loss_h': val_loss_h, 'training_loss_h': train_loss_h.cpu().item(),
-                              'validation_loss_p': val_loss_p, 'training_loss_p': train_loss_p.cpu().item()},
-                        index=[0])
-                    df_loss_per_model = pd.concat([df_loss_per_model, df_epoch_to_append], axis=0, ignore_index=True)
                 # end of fold
                 logs["model_scripted"].append(torch.jit.script(mdl.cpu()))
-                df_loss_per_model.to_csv(MODEL_SINK / (f"cnn_{material_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_"
-                   f"score__seed_{rep}_fold_{kfold_lbl}.csv"))
 
             # book keeping
             logs["performance"] = calculate_metrics(
@@ -555,11 +551,15 @@ if __name__ == "__main__":
         log_peak2peak=np.log(b_peak2peak),
         mean_abs_dbdt=np.mean(np.abs(dbdt), axis=1),
         log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
-        sample_time=1/ds.loc[:, 'freq'],
+        sample_time=1 / ds.loc[:, "freq"],
     )
     if not TRAIN_ON_NEW_MATERIALS:
         ds = ds.assign(db_bsat=b_peak2peak / ds.material.map(BSAT_MAP))
-    logs = main(ds=ds, predict_ploss_directly=DO_PREDICT_P_DIRECTLY, new_materials=TRAIN_ON_NEW_MATERIALS)
+    logs = main(
+        ds=ds,
+        predict_ploss_directly=DO_PREDICT_P_DIRECTLY,
+        new_materials=TRAIN_ON_NEW_MATERIALS,
+    )
     print("Overall Score")
     performances_df = pd.DataFrame(
         {
@@ -587,22 +587,49 @@ if __name__ == "__main__":
         ],
         ignore_index=True,
     )
-    time_now = datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')
+    time_now = datetime.now().strftime("%d-%b-%Y_%H:%M_Uhr")
     h_preds_df.to_csv(
-        PRED_SINK
-        / f"CNN_H_preds_{time_now}_score_{best_score*100:.2f}.csv.zip",
+        PRED_SINK / f"CNN_H_preds_{time_now}_score_{best_score*100:.2f}.csv.zip",
         index=False,
     )
-    p_preds_df = pd.concat([seed_logs_l[best_seed]['results_df'].loc[:, ['pred']].assign(material=material)
-                            for material, seed_logs_l in logs.items()], ignore_index=True)
-    p_preds_df.to_csv(PRED_SINK/ f"CNN_P_preds_{time_now}_score_{best_score*100:.2f}.csv.zip", index=False)
-    
+    p_preds_df = pd.concat(
+        [
+            seed_logs_l[best_seed]["results_df"]
+            .loc[:, ["pred"]]
+            .assign(material=material)
+            for material, seed_logs_l in logs.items()
+        ],
+        ignore_index=True,
+    )
+    p_preds_df.to_csv(
+        PRED_SINK / f"CNN_P_preds_{time_now}_score_{best_score*100:.2f}.csv.zip",
+        index=False,
+    )
+
     print("done.")
 
-    # store jitted models
-    print("Store models as jit-script to disk..", end="")
+    # store info to disk
+    print("Store models as jit-script to disk..")
+    seed_learning_trends_l = []
     for mat_lbl, seed_logs_l in logs.items():
         for seed_i, seed_log in enumerate(seed_logs_l):
+            # construct pd DataFrame for learning trend of seed and material
+            log_keys_to_store_l = ["loss_trends_train_h", "loss_trends_val_h"]
+            if DO_PREDICT_P_DIRECTLY:
+                log_keys_to_store_l += ["loss_trends_train_p", "loss_trends_val_p"]
+            seed_learning_trends_l.append(
+                pd.concat(
+                    [
+                        pd.DataFrame(
+                            seed_log[ks],
+                            columns=[f"{ks}_fold_{i}" for i in range(K_KFOLD)],
+                        )
+                        for ks in log_keys_to_store_l
+                    ],
+                    axis=1,
+                ).assign(seed=seed_i, material=mat_lbl)
+            )
+            # store jitted models
             for fold_i, scripted_mdl in enumerate(seed_log["model_scripted"]):
                 scripted_mdl.save(
                     MODEL_SINK
@@ -611,4 +638,12 @@ if __name__ == "__main__":
                         f"score_{seed_log['performance']['avg-abs-rel-err']*100:.2f}_seed_{seed_i}_fold_{fold_i}.pt"
                     )
                 )
+    print("Store learning trends to disk ..")
+    pd.concat(seed_learning_trends_l, axis=0, ignore_index=True).to_csv(
+        PRED_SINK
+        / (
+            f"learning_curves_cnn_{mat_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M_Uhr')}_"
+            f"score_{seed_log['performance']['avg-abs-rel-err']*100:.2f}_seed_{seed_i}_fold_{fold_i}.csv"
+        )
+    )
     print("done.")
