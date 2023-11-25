@@ -1,27 +1,27 @@
-"""Run convolutional neural networks """
+"""Run convolutional neural networks training """
 import pandas as pd
 import numpy as np
-from uuid import uuid4
-from tqdm import trange, tqdm
-from joblib import delayed, Parallel
-from pprint import pprint
+from tqdm import trange
 import torch
 from torchinfo import summary as ti_summary
 import random
-from datetime import datetime
+from uuid import uuid4
+import argparse
 
 from utils.experiments import (
     get_stratified_fold_indices,
-    PROC_SOURCE,
-    MODEL_SINK,
-    BSAT_MAP,
-    PRED_SINK,
     get_bh_integral_from_two_mats,
-    get_waveform_est,
+    engineer_features,
 )
 from utils.metrics import calculate_metrics
 from utils.topology import TCNWithScalarsAsBias, LossPredictor
-from utils.data import load_new_materials_for_training, ALL_B_COLS, ALL_H_COLS
+from utils.data import (
+    load_new_materials,
+    ALL_B_COLS,
+    ALL_H_COLS,
+    bookkeeping,
+    PROC_SOURCE,
+)
 
 
 pd.set_option("display.max_columns", None)
@@ -40,22 +40,29 @@ BATCH_SIZE = (
     4 if DEBUG else 64
 )  # how many periods/profiles/measurements should be averaged across for a weight update
 DO_PREDICT_P_DIRECTLY = True  # Whether to extend the topology to predict p loss with a parameterized model on top
-
 B_COLS = ALL_B_COLS[::SUBSAMPLE_FACTOR]
 H_COLS = ALL_H_COLS[::SUBSAMPLE_FACTOR]
 H_PRED_COLS = [f"h_pred_{i}" for i in range(1024 // SUBSAMPLE_FACTOR)]
 DEBUG_MATERIALS = {"old": ["3C90", "78"], "new": ["A", "B"]}
-TRAIN_ON_NEW_MATERIALS = False
+TRAIN_ON_NEW_MATERIALS = True
 
 
 def construct_tensor_seq2seq(
-    df, x_cols, b_limit, h_limit, b_limit_pp=None, ln_ploss_mean=0, ln_ploss_std=1
+    df,
+    x_cols,
+    b_limit,
+    h_limit,
+    b_limit_pp=None,
+    ln_ploss_mean=0,
+    ln_ploss_std=1,
+    training_data=True,
 ):
     """generate tensors with following shapes:
     For time series tensors (#time steps, #profiles/periods, #features),
     for scalar tensors (#profiles, #features)"""
     full_b = df.loc[:, B_COLS].to_numpy()
-    full_h = df.loc[:, H_COLS].to_numpy()
+    if training_data:
+        full_h = df.loc[:, H_COLS].to_numpy()
     df = df.drop(columns=[c for c in df if c.startswith(("H_t_", "B_t_", "material"))])
     assert len(df) > 0, "empty dataframe error"
     # put freq on first place since Architecture expects it there
@@ -63,14 +70,16 @@ def construct_tensor_seq2seq(
     X = df.loc[:, x_cols]
     # normalization
     full_b /= b_limit
-    full_h /= h_limit
+    if training_data:
+        full_h /= h_limit
     orig_freq = X.loc[:, ["freq"]].copy().to_numpy()
     X.loc[:, ["temp", "freq"]] /= np.array([75.0, FREQ_SCALE])
     X.loc[:, "freq"] = np.log(X.freq)
     other_cols = [c for c in x_cols if c not in ["temp", "freq"]]
     X.loc[:, other_cols] /= X.loc[:, other_cols].abs().max(axis=0)
-    # add p loss as target (only used when predicting p loss directly), must be last column
-    X = X.assign(ln_ploss=(np.log(df.ploss) - ln_ploss_mean) / ln_ploss_std)
+    if training_data:
+        # add p loss as target (only used as target when predicting p loss directly), must be last column
+        X = X.assign(ln_ploss=(np.log(df.ploss) - ln_ploss_mean) / ln_ploss_std)
     # tensor list
     tens_l = []
     if b_limit_pp is not None:
@@ -98,13 +107,14 @@ def construct_tensor_seq2seq(
             torch.tensor(tantan_b.T[..., np.newaxis], dtype=torch.float32),
         ]
     tens_l += [
-        torch.tensor(
-            full_b.T[..., np.newaxis], dtype=torch.float32
-        ),  # b field is penultimate column
-        torch.tensor(
-            full_h.T[..., np.newaxis], dtype=torch.float32
-        ),  # target is last column
-    ]
+        torch.tensor(full_b.T[..., np.newaxis], dtype=torch.float32)
+    ]  # b field is penultimate column
+    if training_data:
+        tens_l += [
+            torch.tensor(
+                full_h.T[..., np.newaxis], dtype=torch.float32
+            ),  # target is last column
+        ]
 
     # return ts tensor with shape: (#time steps, #profiles, #features), and scalar tensor with (#profiles, #features)
     return torch.dstack(tens_l), torch.tensor(X.to_numpy(), dtype=torch.float32)
@@ -138,7 +148,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
     # device = torch.device("cpu")
     if ds is None:
         if new_materials:
-            ds = load_new_materials_for_training()
+            ds = load_new_materials()
         else:
             ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
     if DEBUG:
@@ -151,11 +161,12 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
             ignore_index=True,
         )
 
-    logs_d = {}
+    experiment_uid = str(uuid4())[:5]
+    logs_d = {"experiment_uid": experiment_uid, "results_per_material": {}}
 
     for m_i, (material_lbl, mat_df) in enumerate(ds.groupby("material")):
         mat_df = mat_df.reset_index(drop=True)
-        print(f"Train for {material_lbl}")
+        print(f"Train for {material_lbl} (experiment uid: {experiment_uid})")
 
         mat_df_proc = mat_df.assign(
             kfold=get_stratified_fold_indices(mat_df, K_KFOLD),
@@ -175,6 +186,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                 "loss_trends_train_p": np.full((N_EPOCHS, K_KFOLD), np.nan),
                 "loss_trends_val_p": np.full((N_EPOCHS, K_KFOLD), np.nan),
                 "model_scripted": [],
+                "model_uids": [],
                 "start_time": pd.Timestamp.now().round(freq="S"),
                 "performance": None,
             }
@@ -502,8 +514,9 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
                             ] = h_pred_val_np
                 # end of fold
                 logs["model_scripted"].append(torch.jit.script(mdl.cpu()))
+                logs["model_uids"].append(str(uuid4())[:8])
 
-            # book keeping
+            # for further book keeping
             logs["performance"] = calculate_metrics(
                 results_df.loc[:, "pred"], results_df.loc[:, "ploss"]
             )
@@ -519,7 +532,7 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
         #                        'misc': [m for m in mat_log]}
 
         # Note that parallel processes won't work in conjunction with a GPU (memory won't be released with Pytorch)
-        logs_d[material_lbl] = [
+        logs_d["results_per_material"][material_lbl] = [
             run_dyn_training(i) for i in range(start_seed, n_seeds + start_seed)
         ]
 
@@ -527,133 +540,35 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
 
 
 if __name__ == "__main__":
-    # prepare folder structure for sinks
-    PRED_SINK.mkdir(parents=True, exist_ok=True)
-    MODEL_SINK.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Run CNN Training")
+    parser.add_argument(
+        "-t", "--tag", default="", help="A tag/comment describing the experiment."
+    )
+    args = parser.parse_args()
     # load data set and featurize
     if TRAIN_ON_NEW_MATERIALS:
-        ds = load_new_materials_for_training()
+        ds = load_new_materials()
     else:
         ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
-    waveforms = get_waveform_est(ds.loc[:, ALL_B_COLS].to_numpy())
-    ds = pd.concat(
-        [
-            ds,
-            pd.get_dummies(waveforms, prefix="wav", dtype=float).rename(
-                columns={
-                    "wav_0": "wav_other",
-                    "wav_1": "wav_square",
-                    "wav_2": "wav_triangular",
-                    "wav_3": "wav_sine",
-                }
-            ),
-        ],
-        axis=1,
-    )
+    # Feature Engineering
+    ds = engineer_features(ds, with_b_sat=not TRAIN_ON_NEW_MATERIALS)
 
-    full_b = ds.loc[:, ALL_B_COLS].to_numpy()
-    dbdt = full_b[:, 1:] - full_b[:, :-1]
-    b_peak2peak = full_b.max(axis=1) - full_b.min(axis=1)
-    ds = ds.assign(
-        b_peak2peak=b_peak2peak,
-        log_peak2peak=np.log(b_peak2peak),
-        mean_abs_dbdt=np.mean(np.abs(dbdt), axis=1),
-        log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
-        sample_time=1 / ds.loc[:, "freq"],
-    )
-    if not TRAIN_ON_NEW_MATERIALS:
-        ds = ds.assign(db_bsat=b_peak2peak / ds.material.map(BSAT_MAP))
+    # Training main loop
     logs = main(
         ds=ds,
         predict_ploss_directly=DO_PREDICT_P_DIRECTLY,
         new_materials=TRAIN_ON_NEW_MATERIALS,
     )
-    print("Overall Score")
-    performances_df = pd.DataFrame(
-        {
-            material: {
-                f"seed_{i}": mm["performance"]["avg-abs-rel-err"]
-                for i, mm in enumerate(seed_logs_l)
-            }
-            for material, seed_logs_l in logs.items()
-        }
+    # dump results to files
+    bookkeeping(
+        logs,
+        debug=DEBUG,
+        experiment_info={
+            "subsample_factor": SUBSAMPLE_FACTOR,
+            "batch_size": BATCH_SIZE,
+            "n_folds": K_KFOLD,
+            "predicts_p_directly": DO_PREDICT_P_DIRECTLY,
+            "n_epochs": N_EPOCHS,
+            "tag": args.tag,
+        },
     )
-    print(performances_df)  # (#seeds, #materials)
-    best_seed = np.argmin(performances_df.to_numpy().mean(axis=1))
-    best_score = np.min(performances_df.to_numpy().mean(axis=1))
-    print(f"Mean Score: {best_score*100:.2f} %")
-
-    # store predictions for post-processing
-    print("Store predictions to disk..", end="")
-
-    h_preds_df = pd.concat(
-        [
-            seed_logs_l[best_seed]["results_df"]
-            .loc[:, H_PRED_COLS]
-            .assign(material=material)
-            for material, seed_logs_l in logs.items()
-        ],
-        ignore_index=True,
-    )
-    time_now = datetime.now().strftime("%d-%b-%Y_%H:%M_Uhr")
-    h_preds_df.to_csv(
-        PRED_SINK / f"CNN_H_preds_{time_now}_score_{best_score*100:.2f}.csv.zip",
-        index=False,
-    )
-    p_preds_df = pd.concat(
-        [
-            seed_logs_l[best_seed]["results_df"]
-            .loc[:, ["pred"]]
-            .assign(material=material)
-            for material, seed_logs_l in logs.items()
-        ],
-        ignore_index=True,
-    )
-    p_preds_df.to_csv(
-        PRED_SINK / f"CNN_P_preds_{time_now}_score_{best_score*100:.2f}.csv.zip",
-        index=False,
-    )
-
-    print("done.")
-
-    # store info to disk
-    print("Store models as jit-script to disk..")
-    seed_learning_trends_l = []
-    for mat_lbl, seed_logs_l in logs.items():
-        for seed_i, seed_log in enumerate(seed_logs_l):
-            # construct pd DataFrame for learning trend of seed and material
-            log_keys_to_store_l = ["loss_trends_train_h", "loss_trends_val_h"]
-            if DO_PREDICT_P_DIRECTLY:
-                log_keys_to_store_l += ["loss_trends_train_p", "loss_trends_val_p"]
-            seed_learning_trends_l.append(
-                pd.concat(
-                    [
-                        pd.DataFrame(
-                            seed_log[ks],
-                            columns=[f"{ks}_fold_{i}" for i in range(K_KFOLD)],
-                        )
-                        for ks in log_keys_to_store_l
-                    ],
-                    axis=1,
-                ).assign(seed=seed_i, material=mat_lbl)
-            )
-            # store jitted models
-            for fold_i, scripted_mdl in enumerate(seed_log["model_scripted"]):
-                # assign uuid
-                mdl_uid = str(uuid4())[:8]
-                scripted_mdl.save(
-                    MODEL_SINK
-                    / (
-                        f"cnn_{mat_lbl}_uuid_{mdl_uid}_{datetime.now().strftime('%d-%b-%Y_%H:%M')}_"
-                        f"score_{seed_log['performance']['avg-abs-rel-err']*100:.2f}_seed_{seed_i}_fold_{fold_i}.pt"
-                    )
-                )
-    print("Store learning trends to disk ..")
-    pd.concat(seed_learning_trends_l, axis=0, ignore_index=True).to_csv(
-        PRED_SINK
-        / (
-            f"learning_curves_cnn_{mat_lbl}_{datetime.now().strftime('%d-%b-%Y_%H:%M')}_"
-            f"score_{seed_log['performance']['avg-abs-rel-err']*100:.2f}_seed_{seed_i}_fold_{fold_i}.csv"
-        )
-    )
-    print("done.")

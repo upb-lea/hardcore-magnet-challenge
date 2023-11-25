@@ -38,8 +38,8 @@ def calculate_metrics(pred, gtruth):
         "avg-abs-rel-err": np.mean(
             rel_err
         ),  # taking the mean according to webinar-3 page 9
-        "percentile_5_rel_err": np.percentile(rel_err, 5),
         "percentile_95_rel_err": np.percentile(rel_err, 95),
+        "percentile_99_rel_err": np.percentile(rel_err, 99),
         "l_infty": np.max(np.abs(diffs)),
         "l_infty_over": np.max(diffs),
         "l_infty_under": np.min(diffs),
