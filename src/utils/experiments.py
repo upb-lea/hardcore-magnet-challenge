@@ -1,11 +1,6 @@
 import numpy as np
-import copy
-from pathlib import Path
-
-DATA_SOURCE = Path.cwd().parent / "data" / "input" / "raw"
-PROC_SOURCE = DATA_SOURCE.parent / "processed"
-PRED_SINK = DATA_SOURCE.parent.parent / 'output'
-MODEL_SINK = PRED_SINK.parent / 'models'
+import pandas as pd
+from utils.data import ALL_B_COLS
 
 # bsat map
 BSAT_MAP = {
@@ -26,14 +21,6 @@ BSAT_MAP = {
     'D': 1,
     'E': 1,
 }
-
-def shuffle_phases(mat):
-    """mat: shape (N,T) with N = mini-batch size and T = period length"""
-    pass
-
-
-def conduct_recurrent_training():
-    pass
 
 
 def get_bh_integral(df):
@@ -178,3 +165,34 @@ def get_waveform_est(full_b):
     k[bool_filter_sine(full_b, rel_kf=0.01, rel_kc=0.01)] = 3
 
     return k
+
+def engineer_features(ds, with_b_sat=False):
+    """Add features to data set"""
+    waveforms = get_waveform_est(ds.loc[:, ALL_B_COLS].to_numpy())
+    ds = pd.concat(
+        [
+            ds,
+            pd.get_dummies(waveforms, prefix="wav", dtype=float).rename(
+                columns={
+                    "wav_0": "wav_other",
+                    "wav_1": "wav_square",
+                    "wav_2": "wav_triangular",
+                    "wav_3": "wav_sine",
+                }
+            ),
+        ],
+        axis=1,
+    )
+    full_b = ds.loc[:, ALL_B_COLS].to_numpy()
+    dbdt = full_b[:, 1:] - full_b[:, :-1]
+    b_peak2peak = full_b.max(axis=1) - full_b.min(axis=1)
+    ds = ds.assign(
+        b_peak2peak=b_peak2peak,
+        log_peak2peak=np.log(b_peak2peak),
+        mean_abs_dbdt=np.mean(np.abs(dbdt), axis=1),
+        log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
+        sample_time=1 / ds.loc[:, "freq"],
+    )
+    if with_b_sat:
+        ds = ds.assign(db_bsat=b_peak2peak / ds.material.map(BSAT_MAP))
+    return ds

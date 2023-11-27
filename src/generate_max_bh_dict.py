@@ -1,7 +1,7 @@
 import os.path
 
 from utils.experiments import get_waveform_est, BSAT_MAP
-from run_cnn import B_COLS, H_COLS, construct_tensor_seq2seq
+from run_cnn_training import B_COLS, H_COLS, construct_tensor_seq2seq
 import pandas as pd
 import numpy as np
 from pathlib import Path
