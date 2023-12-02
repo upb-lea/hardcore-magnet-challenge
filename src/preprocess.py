@@ -2,7 +2,7 @@
 a more compact format, on which modeling will build upon. """
 import pandas as pd
 from pathlib import Path
-from utils.experiments import DATA_SOURCE, PROC_SOURCE
+from utils.data import DATA_SOURCE, PROC_SOURCE
 
 
 data_d = {}

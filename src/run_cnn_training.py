@@ -43,7 +43,7 @@ DO_PREDICT_P_DIRECTLY = True  # Whether to extend the topology to predict p loss
 B_COLS = ALL_B_COLS[::SUBSAMPLE_FACTOR]
 H_COLS = ALL_H_COLS[::SUBSAMPLE_FACTOR]
 H_PRED_COLS = [f"h_pred_{i}" for i in range(1024 // SUBSAMPLE_FACTOR)]
-DEBUG_MATERIALS = {"old": ["3C90", "78"], "new": ["A", "B"]}
+DEBUG_MATERIALS = {"old": ["3C90", "78"], "new": ["A", "B", "C", "D", "E"]}
 TRAIN_ON_NEW_MATERIALS = True
 
 
@@ -552,7 +552,7 @@ if __name__ == "__main__":
         "-g", "--gpu", default="0", help="GPU device to use. -1 for CPU."
     )
     args = parser.parse_args()
-    device_str = f"cuda:{parser.gpu}" if parser.gpu >= 0 else f"cpu"
+    device_str = f"cuda:{args.gpu}" if int(args.gpu) >= 0 else f"cpu"
     # load data set and featurize
     if TRAIN_ON_NEW_MATERIALS:
         ds = load_new_materials()
