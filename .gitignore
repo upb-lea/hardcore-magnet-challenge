@@ -12,6 +12,6 @@ venv/
 __pycache__/
 data/output/
 data/models/
-data/input/validation/
+data/input/
 .eggs/
 *.egg-info/
