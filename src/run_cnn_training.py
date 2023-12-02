@@ -120,12 +120,16 @@ def construct_tensor_seq2seq(
     return torch.dstack(tens_l), torch.tensor(X.to_numpy(), dtype=torch.float32)
 
 
-# TODO check handling of b_max / h_max
-# TODO check inference script for new data set.
 # TODO check report generation for new materials
 
 
-def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=False):
+def main(
+    ds=None,
+    start_seed=0,
+    predict_ploss_directly=False,
+    new_materials=False,
+    device="cuda:0",
+):
     """Main training loop for Residual CNNs
 
     Args
@@ -144,8 +148,8 @@ def main(ds=None, start_seed=0, predict_ploss_directly=False, new_materials=Fals
     logs_d : dict
         Nested dict with experimental results for all seeds and materials
     """
-    device = torch.device("cuda")
-    # device = torch.device("cpu")
+    device = torch.device(device)
+
     if ds is None:
         if new_materials:
             ds = load_new_materials()
@@ -544,7 +548,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t", "--tag", default="", help="A tag/comment describing the experiment."
     )
+    parser.add_argument(
+        "-g", "--gpu", default="0", help="GPU device to use. -1 for CPU."
+    )
     args = parser.parse_args()
+    device_str = f"cuda:{parser.gpu}" if parser.gpu >= 0 else f"cpu"
     # load data set and featurize
     if TRAIN_ON_NEW_MATERIALS:
         ds = load_new_materials()
@@ -558,6 +566,7 @@ if __name__ == "__main__":
         ds=ds,
         predict_ploss_directly=DO_PREDICT_P_DIRECTLY,
         new_materials=TRAIN_ON_NEW_MATERIALS,
+        device=device_str,
     )
     # dump results to files
     bookkeeping(
