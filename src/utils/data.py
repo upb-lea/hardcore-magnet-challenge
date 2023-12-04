@@ -266,7 +266,7 @@ def bookkeeping(logs, debug=False, experiment_info=None):
         index=False,
     )
     print("Write meta info to disk..")
-    exp_info_l = [{"experiment_uid": exp_uid, "debug": debug} | experiment_info]
+    exp_info_l = [{**{"experiment_uid": exp_uid, "debug": debug}, **experiment_info}]
     write_meta_info_to_csv(exp_info_l, table="experiments")
     write_meta_info_to_csv(trials_info_l, table="trials")
     print("done.")
