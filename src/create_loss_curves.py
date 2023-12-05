@@ -29,7 +29,7 @@ trials_tab = pd.read_csv(
 meta_info_df = trials_tab.merge(exp_tab, on="experiment_uid")
 
 mean_fold_score_df = (
-    meta_info_df.groupby(["material", "seed"])["95-perc_rel_err"]
+    meta_info_df.groupby(["material", "seed", 'tag'])["95-perc_rel_err"]
     .agg("mean")
     .reset_index()
 )
@@ -38,7 +38,6 @@ best_seed_per_material_df = mean_fold_score_df.loc[
 ]
 print("Best seed per material:")
 print(best_seed_per_material_df)
-
 # load learning curve csv files:
 learning_curves = pd.read_csv(f"{PRED_SINK}/learning_curves_cnn_{args.experiment_id}.csv.zip")
 
@@ -59,6 +58,7 @@ for material in best_seed_per_material_df["material"]:
 
     number_epochs = len(materials_best_learning_curves.index)
     count_epochs = range(0, number_epochs)
+    experiment_tag = best_seed_per_material_df.loc[best_seed_per_material_df["material"] == material]["tag"].to_string(index=False)
 
     fig, axes = plt.subplots(
         nrows=np.ceil(number_of_folds / 2).astype(int),
@@ -78,8 +78,12 @@ for material in best_seed_per_material_df["material"]:
         ax.set_title(f"Fold {fold}")
         ax.legend()
         ax.grid(which='both', axis='both', visible=True)
+
+
+
     fig.suptitle(
-        f"Eperiment {args.experiment_id}, Material {material}, Seed {seed}",
+        f"Eperiment {args.experiment_id}, Material {material}, Seed {seed} \n"
+        f"{experiment_tag}",
         fontweight="bold",
     )
     plt.tight_layout()
