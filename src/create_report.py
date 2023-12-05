@@ -70,3 +70,5 @@ fig = visualize_rel_error_report(
     preds, gtruth=ds, title="Magnet Challenge 2023 - Team Paderborn"
 )
 plt.show()
+
+plt.savefig(f"{PRED_SINK}/{args.experiment_id}.pdf")
