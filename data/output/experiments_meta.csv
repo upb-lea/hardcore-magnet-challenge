@@ -1,0 +1,7 @@
+experiment_uid,debug,subsample_factor,batch_size,n_folds,predicts_p_directly,n_epochs,tag
+f1583,True,8,4,1,True,2,
+b588e,True,8,4,1,False,2,
+6af40,True,8,4,1,False,2,
+2f422,True,8,4,1,True,2,
+fd0ea,False,1,64,4,True,30000,p_loss_weight = 0.5 * i_epoch / N_EPOCHS
+cdb55,False,1,64,6,True,10000,"p_loss_weigth = i_epoch / N_EPOCHS (no weight!), Kfold = 6"
