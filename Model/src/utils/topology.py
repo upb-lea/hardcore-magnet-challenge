@@ -168,8 +168,7 @@ class TCNWithScalarsAsBias(nn.Module):
         tcn_layer_cfg = tcn_layer_cfg or {
             "f": [
                 {"units": (num_input_scalars + num_input_ts), "act_func": "tanh"},
-                {"units": 24, "act_func": "tanh"},
-                # {'units': 24, 'act_func': 'tanh'},
+                {"units": 8, "act_func": "tanh"},
                 {"units": 1},
             ]
         }

@@ -13,7 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": ["-e", "33257", "-s", "0"],
-            "cwd": "${workspaceFolder}/src",
+            "cwd": "${workspaceFolder}/Model/src",
         },
         {
             "name": "Python: Current File",
@@ -22,7 +22,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             //"cwd": "${fileDirname}",
-            "cwd": "${workspaceFolder}/src",
+            "cwd": "${workspaceFolder}/Model/src",
             "justMyCode": false,
         }
     ],

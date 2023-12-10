@@ -71,4 +71,4 @@ fig = visualize_rel_error_report(
 )
 plt.show()
 
-plt.savefig(f"{PRED_SINK}/{args.experiment_id}.pdf")
+plt.savefig(PRED_SINK/ f"Report_{args.experiment_id}.pdf")

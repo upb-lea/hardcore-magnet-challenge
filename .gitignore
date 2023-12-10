@@ -3,15 +3,17 @@
 *.pkl.gz
 *.pkl
 *.csv
+!Model/data/output/*_meta.csv
+*.pt
+*.zip
 
 # folders
-.vscode/
 .idea/
-venv/
+.venv/
 .ipynb_checkpoints/
 __pycache__/
-data/output/
-data/models/
-data/input/
+Model/data/output/
+Model/data/models/
+Model/data/input/
 .eggs/
 *.egg-info/

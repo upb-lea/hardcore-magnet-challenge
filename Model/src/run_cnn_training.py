@@ -193,6 +193,7 @@ def main(
                 "model_uids": [],
                 "start_time": pd.Timestamp.now().round(freq="S"),
                 "performance": None,
+                "model_size": None,
             }
             # training result container
             results_df = mat_df_proc.loc[:, ["ploss", "kfold"]].assign(

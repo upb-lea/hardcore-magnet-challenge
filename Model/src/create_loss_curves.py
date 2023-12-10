@@ -41,15 +41,7 @@ print(best_seed_per_material_df)
 # load learning curve csv files:
 learning_curves = pd.read_csv(f"{PRED_SINK}/learning_curves_cnn_{args.experiment_id}.csv.zip")
 
-# figure out number of folds
-number_of_folds = 0
-for label in learning_curves.columns:
-    try:
-        fold = int(label[-1])
-        if fold > number_of_folds:
-            number_of_folds = fold
-    except:
-        pass
+number_of_folds = meta_info_df.loc[0, 'n_folds']
 
 for material in best_seed_per_material_df["material"]:
     # figure out best seed
@@ -88,4 +80,4 @@ for material in best_seed_per_material_df["material"]:
     )
     plt.tight_layout()
     # plt.show()
-    plt.savefig(f"{PRED_SINK}/Experiment_{args.experiment_id}_Material_{material}_Seed_{seed}.pdf")
+    plt.savefig(PRED_SINK / f"LearnCurve_Exp_{args.experiment_id}_Material_{material}_Seed_{seed}.pdf")
