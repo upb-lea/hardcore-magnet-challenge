@@ -4,5 +4,8 @@
     "python.linting.flake8Enabled": false,
     "python.linting.lintOnSave": true,
     "jupyter.notebookFileRoot": "${workspaceFolder}/Model/src",
-    "python.formatting.autopep8Args": ["--max-line-length=120"]
+    "python.formatting.autopep8Args": ["--max-line-length=120"],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/Model/src",
+    ],
 }

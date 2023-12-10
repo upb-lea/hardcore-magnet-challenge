@@ -150,13 +150,14 @@ def bool_filter_triangular(b, rel_kf=0.005, rel_kc=0.005):
     return filter_bool
 
 def get_waveform_est(full_b):
-    """From Till's tp-1.4.7.3.1 NB, return waveform class"""
+    """From Till's tp-1.4.7.3.1 NB, return waveform class.
+    Postprocessing from wk-1.1-EDA NB."""
   
     # labels init all with 'other'
     k = np.zeros(full_b.shape[0], dtype=int)
     
     # square
-    k[np.all(np.abs(full_b[:, 250:500:50] - full_b[:, 200:450:50]) / np.max(np.abs(full_b), axis=1).reshape(-1, 1) < 0.05, axis=1) & np.all(full_b[:, -200:]< 0, axis=1)] = 1
+    k[np.all(np.abs(full_b[:, 250:500:50] - full_b[:, 200:450:50]) / np.max(np.abs(full_b), axis=1, keepdims=True) < 0.05, axis=1) & np.all(full_b[:, -200:]< 0, axis=1)] = 1
     
     # triangular
     k[bool_filter_triangular(full_b, rel_kf=0.01, rel_kc=0.01)] = 2
@@ -164,6 +165,20 @@ def get_waveform_est(full_b):
     # sine
     k[bool_filter_sine(full_b, rel_kf=0.01, rel_kc=0.01)] = 3
 
+    # postprocess "other" signals in frequency-domain, to recover some more squares, triangles, and sines
+    n_subsample = 32
+    other_b = full_b[k == 0, ::n_subsample]
+    other_b /= np.abs(other_b).max(axis=1, keepdims=True)
+    other_b_ft = np.abs(np.fft.fft(other_b, axis=1))
+    other_b_ft /= other_b_ft.max(axis=1, keepdims=True)
+    idx_of_newly_identified_sines = np.all((other_b_ft[:, 3:10] < 0.03) & (other_b_ft[:, [2]] < 0.2), axis=1)
+    idx_of_newly_identified_triangs = np.all(((other_b_ft[:, 1:8] - other_b_ft[:, 2:9]) > 0), axis=1) | np.all(((other_b_ft[:, 1:8:2] > 1e-2) & (other_b_ft[:, 2:9:2] < 1e-2)), axis=1)
+    idx_of_newly_identified_triangs = idx_of_newly_identified_triangs & ~idx_of_newly_identified_sines
+    idx_of_newly_identified_squares = np.all((other_b_ft[:, 1:4:2] > 1e-2) & (other_b_ft[:, 2:5:2] < 1e-3), axis=1)
+    idx_of_newly_identified_squares = idx_of_newly_identified_squares & ~idx_of_newly_identified_sines & ~idx_of_newly_identified_triangs
+    k[idx_of_newly_identified_squares] = 1
+    k[idx_of_newly_identified_triangs] = 2
+    k[idx_of_newly_identified_sines] = 3
     return k
 
 def engineer_features(ds, with_b_sat=False):
