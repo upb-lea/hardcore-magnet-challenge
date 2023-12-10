@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from utils.data import ALL_B_COLS
+from utils.data import ALL_B_COLS, ALL_H_COLS
 
 # bsat map
 BSAT_MAP = {
@@ -28,8 +28,8 @@ def get_bh_integral(df):
       calculate the area within the polygon"""
     # offset polygon into first quadrant
     b, h = (
-        df.loc[:, [f"B_t_{k}" for k in range(1024)]].to_numpy() + 0.5,  # T
-        df.loc[:, [f"H_t_{k}" for k in range(1024)]].to_numpy() + 1000,  # A/m
+        df.loc[:, ALL_B_COLS].to_numpy() + 0.5,  # T
+        df.loc[:, ALL_H_COLS].to_numpy() + 1000,  # A/m
     )
     return (
         df.freq
@@ -171,19 +171,24 @@ def get_waveform_est(full_b):
     other_b /= np.abs(other_b).max(axis=1, keepdims=True)
     other_b_ft = np.abs(np.fft.fft(other_b, axis=1))
     other_b_ft /= other_b_ft.max(axis=1, keepdims=True)
-    idx_of_newly_identified_sines = np.all((other_b_ft[:, 3:10] < 0.03) & (other_b_ft[:, [2]] < 0.2), axis=1)
-    idx_of_newly_identified_triangs = np.all(((other_b_ft[:, 1:8] - other_b_ft[:, 2:9]) > 0), axis=1) | np.all(((other_b_ft[:, 1:8:2] > 1e-2) & (other_b_ft[:, 2:9:2] < 1e-2)), axis=1)
-    idx_of_newly_identified_triangs = idx_of_newly_identified_triangs & ~idx_of_newly_identified_sines
-    idx_of_newly_identified_squares = np.all((other_b_ft[:, 1:4:2] > 1e-2) & (other_b_ft[:, 2:5:2] < 1e-3), axis=1)
-    idx_of_newly_identified_squares = idx_of_newly_identified_squares & ~idx_of_newly_identified_sines & ~idx_of_newly_identified_triangs
-    k[idx_of_newly_identified_squares] = 1
-    k[idx_of_newly_identified_triangs] = 2
-    k[idx_of_newly_identified_sines] = 3
+    msk_of_newly_identified_sines = np.all((other_b_ft[:, 3:10] < 0.03) & (other_b_ft[:, [2]] < 0.2), axis=1)
+    msk_of_newly_identified_triangs = np.all(((other_b_ft[:, 1:8] - other_b_ft[:, 2:9]) > 0), axis=1) | np.all(((other_b_ft[:, 1:8:2] > 1e-2) & (other_b_ft[:, 2:9:2] < 1e-2)), axis=1)
+    msk_of_newly_identified_triangs = msk_of_newly_identified_triangs & ~msk_of_newly_identified_sines
+    msk_of_newly_identified_squares = np.all((other_b_ft[:, 1:4:2] > 1e-2) & (other_b_ft[:, 2:5:2] < 1e-3), axis=1)
+    msk_of_newly_identified_squares = msk_of_newly_identified_squares & ~msk_of_newly_identified_sines & ~msk_of_newly_identified_triangs
+    idx_sines = np.arange(k.size)[k == 0][msk_of_newly_identified_sines]
+    idx_triangs = np.arange(k.size)[k == 0][msk_of_newly_identified_triangs]
+    idx_squares = np.arange(k.size)[k == 0][msk_of_newly_identified_squares]
+    k[idx_squares] = 1
+    k[idx_triangs] = 2
+    k[idx_sines] = 3
     return k
 
 def engineer_features(ds, with_b_sat=False):
     """Add features to data set"""
-    waveforms = get_waveform_est(ds.loc[:, ALL_B_COLS].to_numpy())
+
+    full_b = ds.loc[:, ALL_B_COLS].to_numpy()
+    waveforms = get_waveform_est(full_b)
     ds = pd.concat(
         [
             ds,
@@ -198,15 +203,19 @@ def engineer_features(ds, with_b_sat=False):
         ],
         axis=1,
     )
-    full_b = ds.loc[:, ALL_B_COLS].to_numpy()
+    
     dbdt = full_b[:, 1:] - full_b[:, :-1]
     b_peak2peak = full_b.max(axis=1) - full_b.min(axis=1)
+    # fft features (experimental)
+    b_ft = np.abs(np.fft.fft(full_b[:, ::32], axis=1))
+
     ds = ds.assign(
         b_peak2peak=b_peak2peak,
         log_peak2peak=np.log(b_peak2peak),
         mean_abs_dbdt=np.mean(np.abs(dbdt), axis=1),
         log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
         sample_time=1 / ds.loc[:, "freq"],
+        **{f'ft_{k}': b_ft[:, k] for k in range(1, 10)}
     )
     if with_b_sat:
         ds = ds.assign(db_bsat=b_peak2peak / ds.material.map(BSAT_MAP))

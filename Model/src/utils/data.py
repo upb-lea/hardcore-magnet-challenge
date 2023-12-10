@@ -37,6 +37,7 @@ EXP_CSV_COLS = {
     "predicts_p_directly": bool,
     "n_epochs": int,
     "tag": str,
+    'model_size': int,
 }
 DATA_SOURCE = Path.cwd().parent / "data" / "input" / "raw"
 PROC_SOURCE = DATA_SOURCE.parent / "processed"
@@ -78,7 +79,7 @@ def load_new_materials(training=True, filter_materials=None):
                 delayed(load_material_csv_files_and_generate_pandas_df)(
                     mat_folder, training
                 )
-                for mat_folder in folder_path.glob("Material*")
+                for mat_folder in sorted(folder_path.glob("Material*"))
             )
     else:
         if isinstance(filter_materials, str):
@@ -211,6 +212,8 @@ def bookkeeping(logs, debug=False, experiment_info=None):
     for mat_lbl, seed_logs_l in mat_logs.items():
         for seed_i, seed_log in enumerate(seed_logs_l):
             n_folds = len(seed_log["model_scripted"])
+            if 'model_size' not in experiment_info:
+                experiment_info['model_size'] = seed_log['model_size']
             # construct pd DataFrame for learning trend of seed and material
             log_keys_to_store_l = ["loss_trends_train_h", "loss_trends_val_h"]
             has_predicted_P_directly = "loss_trends_train_p" in list(seed_log.keys())
