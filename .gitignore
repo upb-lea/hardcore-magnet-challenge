@@ -3,6 +3,7 @@
 *.pkl.gz
 *.pkl
 *.csv
+!Model/data/output/*_meta.csv
 *.pt
 *.zip
 
