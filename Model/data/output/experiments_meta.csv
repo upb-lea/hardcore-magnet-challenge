@@ -15,3 +15,7 @@ e8f7f,True,8,4,1,True,2,,-1
 ea89c,False,1,64,4,True,5000,8 neurons in expensive layer,2231
 60642,False,1,64,4,True,5000,32 neurons in expensive layer,5951
 0a2ef,False,1,64,4,True,5000,"32 in expensive, kernel size 17",10943
+b7cd2,False,1,64,4,True,5000,1-5 FT N=32,3006
+bfd85,False,1,64,4,True,5000,1-9 FT N=32,3662
+dec38,False,1,64,4,True,5000,p_loss_weight = 0.2 * i_epoch / N_EPOCHS,3662
+67a8c,False,1,64,4,True,5000,p_loss_weight = 0.8 * i_epoch / N_EPOCHS,3662
