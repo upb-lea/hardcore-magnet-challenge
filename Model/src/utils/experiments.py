@@ -207,7 +207,7 @@ def engineer_features(ds, with_b_sat=False):
     dbdt = full_b[:, 1:] - full_b[:, :-1]
     b_peak2peak = full_b.max(axis=1) - full_b.min(axis=1)
     # fft features (experimental)
-    b_ft = np.abs(np.fft.fft(full_b[:, ::32], axis=1))
+    #b_ft = np.abs(np.fft.fft(full_b[:, ::32], axis=1))
 
     ds = ds.assign(
         b_peak2peak=b_peak2peak,
@@ -215,8 +215,9 @@ def engineer_features(ds, with_b_sat=False):
         mean_abs_dbdt=np.mean(np.abs(dbdt), axis=1),
         log_mean_abs_dbdt=np.log(np.mean(np.abs(dbdt), axis=1)),
         sample_time=1 / ds.loc[:, "freq"],
-        **{f'ft_{k}': b_ft[:, k] for k in range(1, 10)}
+        #**{f'ft_{k}': b_ft[:, k] for k in range(1, 10)}
     )
     if with_b_sat:
         ds = ds.assign(db_bsat=b_peak2peak / ds.material.map(BSAT_MAP))
     return ds
+
