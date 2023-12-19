@@ -115,45 +115,6 @@ class TemporalBlock(nn.Module):
         return y
 
 
-class TemporalAcausalConvNet(nn.Module):
-    def __init__(self, num_inputs, layer_cfg=None):
-        super().__init__()
-        layer_cfg = layer_cfg or {
-            "f": [
-                {"units": 32, "act_func": "tanh"},  # {'units': 6, 'act_func': 'tanh'},
-                {"units": 1},
-            ]
-        }
-        layers = []
-        dilation_offset = layer_cfg.get("starting_dilation_rate", 0)  # >= 0
-        for i, l_cfg in enumerate(layer_cfg["f"]):
-            kernel_size = l_cfg.get("kernel_size", 7)
-            dropout_rate = layer_cfg.get("dropout", 0.0)
-            dilation_size = 2 ** (i + dilation_offset)
-            in_channels = num_inputs if i == 0 else layer_cfg["f"][i - 1]["units"]
-            layers += [
-                TemporalBlock(
-                    in_channels,
-                    l_cfg["units"],
-                    kernel_size,
-                    stride=1,
-                    dilation=dilation_size,
-                    residual=layer_cfg.get("residual", False),
-                    double_layered=layer_cfg.get("double_layered", False),
-                    dropout=dropout_rate,
-                    act_func=l_cfg.get("act_func", nn.Identity),
-                ),
-            ]
-
-        self.network = nn.Sequential(*layers)
-
-    def forward(self, x):
-        y = self.network(x)
-        # subtract mean along time domain
-        y = y - y.mean(dim=-1).unsqueeze(-1)
-        return y
-
-
 class TCNWithScalarsAsBias(nn.Module):
     def __init__(
         self,
@@ -167,7 +128,7 @@ class TCNWithScalarsAsBias(nn.Module):
         self.num_input_scalar = num_input_scalars
         tcn_layer_cfg = tcn_layer_cfg or {
             "f": [
-                {"units": (num_input_scalars + num_input_ts), "act_func": "tanh"},
+                {"units": (num_input_scalars + 1), "act_func": "tanh"},
                 {"units": 8, "act_func": "tanh"},
                 {"units": 1},
             ]
