@@ -34,7 +34,23 @@ from run_cnn_training import construct_tensor_seq2seq, FREQ_SCALE
 pd.set_option("display.max_columns", None)
 
 
-def run_inference(model_uid):
+def run_inference(model_uid, df=None):
+    """Run inference with a certain model.
+    All corresponding testing data will be loaded up and processed accordingly.
+
+    Args
+    ----
+    model_uid: str
+        Model identification
+    df : pandas DataFrame (optional, default=None)
+        Skip reading Testing data and use provided DataFrame instead (for the sake of transparency)
+
+    Returns
+    -------
+    p_pred_ser: pandas Series
+        The power loss prediction as pandas Series.
+        Call p_pred_ser.to_numpy() to get the numpy representation
+    """
     # filter model in meta info
     exp_tab = pd.read_csv(EXP_CSV_PATH, dtype=EXP_CSV_COLS)
     trials_tab = pd.read_csv(
@@ -56,7 +72,10 @@ def run_inference(model_uid):
     mdl.eval()
 
     # load up data
-    ds = load_new_materials(training=False, filter_materials=targeted_material)
+    if df is None:
+        ds = load_new_materials(training=False, filter_materials=targeted_material)
+    else:
+        ds = df
     ds = engineer_features(ds, with_b_sat=False)
 
     # construct tensors
@@ -75,9 +94,7 @@ def run_inference(model_uid):
     b_limit_per_profile = (
         np.abs(ds.loc[:, B_COLS].to_numpy()).max(axis=1).reshape(-1, 1)
     )
-
     h_limit = h_limit * b_limit_per_profile / b_limit
-
     b_limit_test_fold = b_limit
     b_limit_test_fold_pp = b_limit_per_profile
     h_limit_test_fold = h_limit
@@ -90,21 +107,20 @@ def run_inference(model_uid):
             b_limit_pp=b_limit_test_fold_pp,
             training_data=False,
         )
-        # val_tensor_ts = val_tensor_ts.to(device)
-        # val_tensor_scalar = val_tensor_scalar.to(device)
+        # does a p predictor exist?
         predicts_p_directly = meta_ser.loc["predicts_p_directly"]
         if predicts_p_directly:
             # prepare torch tensors for normalization scales
 
             b_limit_test_fold_torch = torch.as_tensor(
                 b_limit_test_fold, dtype=torch.float32
-            )  # .to(device)
+            )
             h_limit_test_fold_torch = torch.as_tensor(
                 h_limit_test_fold, dtype=torch.float32
-            )  # .to(device)
+            )
             freq_scale_torch = torch.as_tensor(
                 FREQ_SCALE, dtype=torch.float32
-            )  # .to(device)
+            )
 
             val_pred_p, val_pred_h = mdl(
                 val_tensor_ts.permute(1, 2, 0),
@@ -136,6 +152,7 @@ def run_inference(model_uid):
         index=False,
         header=False,
     )
+    return p_pred_ser
 
 
 if __name__ == "__main__":
