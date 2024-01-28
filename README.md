@@ -1,8 +1,24 @@
-# Paderborn University Submission (MagNet Challenge 2023)
+<div align="center">
+<h1>MagNet Challenge 2023 Paderborn University Solution </h1>
+<h3>HARDCORE: H-field and power loss estimation for arbitrary waveforms with residual, dilated convolutional neural networks in ferrite cores
+</h3>
 
-This is the submission of the Paderborn University team (Department of Power Electronics and Electrical Drives).
-Technical details can be read in the report `PaderbornUniversity_Report.pdf`.
+[Wilhelm Kirchgässner](https://github.com/wkirgsn), [Nikolas Förster](https://github.com/gituser789), [Till Piepenbrock](https://github.com/tillpiepenbrock), [Oliver Schweins](https://github.com/OliverSchw), [Oliver Wallscheid](https://github.com/wallscheid)
 
+[Paderborn University](https://www.uni-paderborn.de/en/), [Dept. of Power Electronics and Electrical Drives](https://ei.uni-paderborn.de/en/lea)
+
+Paper: [arXiv 2401.10166](https://arxiv.org/abs/2401.11488)
+
+</div>
+
+## Updates
+* **` Jan. 27th, 2024`:** Publish the submission on GitHub
+
+## Abstract
+The [MagNet Challenge 2023](https://github.com/minjiechen/magnetchallenge) calls upon competitors to develop data-driven models for the material-specific, waveform-agnostic estimation of steady-state power losses in toroidal ferrite cores. The following HARDCORE (H-field and power loss estimation for Arbitrary waveforms with Residual, Dilated convolutional neural networks in ferrite COREs) approach shows that a residual convolutional neural network with physics-informed extensions can serve this task efficiently when trained on observational data beforehand. One key solution element is an intermediate model layer which first reconstructs the bh curve and then estimates the power losses based on the curve's area rendering the proposed topology physically interpretable. In addition, emphasis was placed on expert-based feature engineering and information-rich inputs in order to enable a lean model architecture. A model is trained from scratch for each material, while the topology remains the same. A Pareto-style trade-off between model size and estimation accuracy is demonstrated, which yields an optimum at as low as 1755 parameters and down to below 8\,\% for the 95-th percentile of the relative error for the worst-case material with sufficient samples.
+
+
+## Overview
 Folder structure:
 
 ```
