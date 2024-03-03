@@ -1,5 +1,5 @@
 <div align="center">
-<h1>MagNet Challenge 2023 Paderborn University Solution </h1>
+<h1>MagNet Challenge 2023 Winning Solution (1st Place Model Performance) </h1>
 <h3>HARDCORE: H-field and power loss estimation for arbitrary waveforms with residual, dilated convolutional neural networks in ferrite cores
 </h3>
 
