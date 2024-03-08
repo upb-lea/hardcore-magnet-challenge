@@ -1,0 +1,46 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Hardcore: H-field and power loss estimation for arbitrary
+  waveforms with residual, dilated convolutional neural
+  networks in ferrite cores
+message: >-
+  MagNet Challenge 2023 Winning Solution (1st Place Model
+  Performance)
+type: software
+authors:
+  - given-names: Wilhelm
+    family-names: Kirchgässner
+    orcid: 'https://orcid.org/0000-0001-9490-1843'
+    affiliation: Paderborn University
+  - given-names: Nikolas
+    family-names: Förster
+    affiliation: Paderborn University
+  - given-names: Till
+    family-names: Piepenbrock
+    affiliation: Paderborn University
+  - given-names: Oliver
+    family-names: Schweins
+    affiliation: Paderborn University
+  - given-names: Oliver
+    family-names: Wallscheid
+    affiliation: Siegen University
+    orcid: 'https://orcid.org/0000-0001-9362-8777'
+identifiers:
+  - type: url
+    value: 'https://arxiv.org/abs/2401.11488'
+    description: arXiv 2401.11488
+repository-code: 'https://github.com/upb-lea/hardcore-magnet-challenge'
+abstract: >-
+  Winning solution to the IEEE PELS MagNet challenge 2023
+  (1st Place Model Performance Category)
+keywords:
+  - magnetics
+  - neural networks
+  - machine learning
+  - artificial intelligence
+  - transformer
+  - power electronics
+license: MIT
