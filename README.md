@@ -7,7 +7,7 @@
 
 [Paderborn University](https://www.uni-paderborn.de/en/), [Dept. of Power Electronics and Electrical Drives](https://ei.uni-paderborn.de/en/lea)
 
-Paper: [arXiv 2401.10166](https://arxiv.org/abs/2401.11488)
+Paper: [arXiv 2401.11488](https://arxiv.org/abs/2401.11488)
 
 </div>
 
