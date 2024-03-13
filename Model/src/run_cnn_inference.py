@@ -134,6 +134,7 @@ def run_inference(model_uid, df=None):
                 val_tensor_ts.permute(1, 2, 0),
                 val_tensor_scalar,
             ).permute(2, 0, 1)
+            # TODO: bug: val_pred_p is not set here
         h_pred_df = pd.DataFrame(
             val_pred_h.squeeze().cpu().numpy().T * h_limit_test_fold,
             columns=[f"H_t_{i}" for i in range(len(B_COLS))],

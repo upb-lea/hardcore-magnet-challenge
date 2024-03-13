@@ -224,6 +224,35 @@ class TCNWithScalarsAsBias(nn.Module):
 
 
 class LossPredictor(nn.Module):
+    """The post processor scales the power loss estimate by another +- 10%"""
+
+    def __init__(
+        self,
+        h_predictor,
+    ):
+        super().__init__()
+        self.h_predictor = h_predictor
+        self.post_processor = nn.Sequential(
+            nn.Linear(self.h_predictor.num_input_scalar, 8),
+            nn.Tanh(),
+            nn.Linear(8, 1),
+            nn.Tanh(),
+        )
+
+    def forward(self, x_ts, x_scalars, b_lim, h_lim, freq_scale):
+        h_pred = self.h_predictor(x_ts, x_scalars).permute(2, 0, 1)
+        freq = freq_scale * torch.exp(x_scalars[:, [0]])
+        scaled_b = x_ts[:, [-1], :].permute(2, 0, 1)  # globally scaled B curve
+        b = b_lim * scaled_b
+        h = h_lim * h_pred
+        ploss_pred = (
+            (1 + 0.1 * self.post_processor(x_scalars)) * freq * torch.trapz(h, b, dim=0)
+        )
+
+        return torch.log(ploss_pred), h_pred
+
+
+class LossPredictorShoelace(nn.Module):
     """The post processor replaces the 0.5 factor during the shoelace formula in this topology.
     It shall capture the difference between the power loss scalar and the polygon area between
     B and H."""
@@ -235,10 +264,10 @@ class LossPredictor(nn.Module):
         super().__init__()
         self.h_predictor = h_predictor
         self.post_processor = nn.Sequential(
-            nn.Linear(self.h_predictor.num_input_scalar, 8), 
+            nn.Linear(self.h_predictor.num_input_scalar, 8),
             nn.Tanh(),
             nn.Linear(8, 1),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
     def forward(self, x_ts, x_scalars, b_lim, h_lim, freq_scale):
@@ -249,7 +278,7 @@ class LossPredictor(nn.Module):
         h_with_offset = h_lim * h_pred + 5  # arbitrary offset
         ploss_pred = (
             freq
-            * (0.5 + 0.1*self.post_processor(x_scalars))
+            * (0.5 + 0.1 * self.post_processor(x_scalars))
             * torch.abs(
                 torch.sum(
                     b_with_offset

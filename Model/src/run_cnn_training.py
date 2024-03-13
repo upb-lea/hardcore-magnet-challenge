@@ -1,4 +1,5 @@
-"""Run convolutional neural networks training """
+"""Run convolutional neural networks training"""
+
 import pandas as pd
 import numpy as np
 from tqdm import trange
@@ -420,13 +421,13 @@ def main(
                             train_loss_h.backward()
                             opt.step()
                     with torch.no_grad():
-                        logs["loss_trends_train_h"][
-                            i_epoch, fold_i
-                        ] = train_loss_h.cpu().item()
+                        logs["loss_trends_train_h"][i_epoch, fold_i] = (
+                            train_loss_h.cpu().item()
+                        )
                         if predict_ploss_directly:
-                            logs["loss_trends_train_p"][
-                                i_epoch, fold_i
-                            ] = train_loss_p.cpu().item()
+                            logs["loss_trends_train_p"][i_epoch, fold_i] = (
+                                train_loss_p.cpu().item()
+                            )
                             pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {train_loss_p.cpu().item():.2e}"
                         else:
                             pbar_str = f"Loss {train_loss_h.cpu().item():.2e} | val loss {val_loss_h if val_loss_h is not None else -1.0:.2e}"
@@ -455,9 +456,9 @@ def main(
                                 val_loss_h = (
                                     loss_h(val_pred_h, val_h_g_truth).cpu().item()
                                 )
-                                logs["loss_trends_val_p"][
-                                    i_epoch, kfold_lbl
-                                ] = val_loss_p
+                                logs["loss_trends_val_p"][i_epoch, kfold_lbl] = (
+                                    val_loss_p
+                                )
                             else:
                                 val_pred_h = mdl(
                                     val_tensor_ts[:, :, :-1].permute(1, 2, 0),
@@ -497,9 +498,7 @@ def main(
                                 ] = np.exp(
                                     val_pred_p.cpu().numpy() * ln_ploss_std
                                     + ln_ploss_mean
-                                ).astype(
-                                    np.float32
-                                )
+                                ).astype(np.float32)
                             else:
                                 results_df.loc[
                                     results_df.kfold == kfold_lbl, "pred"
@@ -510,9 +509,7 @@ def main(
                                     * FREQ_SCALE,
                                     b=val_tensor_ts_np[:, :, -2].T * b_limit_test_fold,
                                     h=h_pred_val_np,
-                                ).astype(
-                                    np.float32
-                                )
+                                ).astype(np.float32)
                             results_df.loc[
                                 results_df.kfold == kfold_lbl,
                                 [c for c in results_df if c.startswith("h_pred_")],
@@ -553,7 +550,7 @@ if __name__ == "__main__":
         "-g", "--gpu", default="0", help="GPU device to use. -1 for CPU."
     )
     args = parser.parse_args()
-    device_str = f"cuda:{args.gpu}" if int(args.gpu) >= 0 else f"cpu"
+    device_str = f"cuda:{args.gpu}" if int(args.gpu) >= 0 else "cpu"
     # load data set and featurize
     if TRAIN_ON_NEW_MATERIALS:
         ds = load_new_materials()
