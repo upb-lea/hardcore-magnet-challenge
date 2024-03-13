@@ -568,7 +568,7 @@ if __name__ == "__main__":
             print(f"found mat folder: {mat_folder}")
             df_l.append(load_material_csv_files_and_generate_pandas_df(mat_folder, material=mat))
         if len(df_l) == 0:
-            ValueError(f"Found no material folder for {mat=} in {raw_path}")
+            raise ValueError(f"Found no material folder for {mat=} in {raw_path}")
         ds = pd.concat(df_l, ignore_index=True)
     else:
         # load data set and featurize
