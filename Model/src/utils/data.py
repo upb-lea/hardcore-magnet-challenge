@@ -45,8 +45,8 @@ PRED_SINK = DATA_SOURCE.parent.parent / "output"
 MODEL_SINK = PRED_SINK.parent / "models"
 
 
-def load_material_csv_files_and_generate_pandas_df(mat_folder_path, training=True):
-    mat_lbl = mat_folder_path.name.split(" ")[-1]
+def load_material_csv_files_and_generate_pandas_df(mat_folder_path, training=True, material=None):
+    mat_lbl = material or mat_folder_path.name.split(" ")[-1]
     b_df = pd.read_csv(mat_folder_path / "B_Field.csv", header=0, names=ALL_B_COLS)
     freq = pd.read_csv(mat_folder_path / "Frequency.csv", header=0)
     temp = pd.read_csv(mat_folder_path / "Temperature.csv", header=0)
