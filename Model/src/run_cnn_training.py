@@ -562,7 +562,7 @@ if __name__ == "__main__":
     if args.material is not None:
         # load all data on the chosen material that can be found under Model/data/raw
         mat = args.material.upper()
-        raw_path = Path(__file__).parent.parent / 'data' / 'raw'
+        raw_path = Path(__file__).parent.parent / 'data' / 'input' /'raw'
         df_l = []
         for mat_folder in raw_path.glob(mat):
             print(f"found mat folder: {mat_folder}")
