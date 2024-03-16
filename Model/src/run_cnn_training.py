@@ -30,7 +30,7 @@ from utils.data import (
 pd.set_option("display.max_columns", None)
 
 DEBUG = False
-N_SEEDS = 5  # how often should the experiment be repeated with different random init
+N_SEEDS = 1  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
 N_EPOCHS = 2 if DEBUG else 5000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
@@ -38,7 +38,7 @@ SUBSAMPLE_FACTOR = (
     8 if DEBUG else 1
 )  # every n-th sample along the time axis is considered
 FREQ_SCALE = 150_000  # in Hz
-K_KFOLD = 1 if DEBUG else 4  # how many folds in cross validation
+K_KFOLD = 1 if DEBUG else 1  # how many folds in cross validation
 BATCH_SIZE = (
     4 if DEBUG else 64
 )  # how many periods/profiles/measurements should be averaged across for a weight update
@@ -159,6 +159,7 @@ def main(
         else:
             ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
     if DEBUG:
+        debug_mats = ['3C92']
         ds = pd.concat(
             [
                 d.iloc[:10, :]
@@ -564,7 +565,7 @@ if __name__ == "__main__":
         mat = args.material.upper()
         raw_path = Path(__file__).parent.parent / 'data' / 'input' /'raw'
         df_l = []
-        for mat_folder in raw_path.glob(mat):
+        for mat_folder in raw_path.glob(f"**/{mat}"):
             print(f"found mat folder: {mat_folder}")
             df_l.append(load_material_csv_files_and_generate_pandas_df(mat_folder, material=mat))
         if len(df_l) == 0:
