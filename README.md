@@ -13,6 +13,7 @@ Paper: [arXiv 2401.11488](https://arxiv.org/abs/2401.11488)
 </div>
 
 ## Updates
+* **` Mar. 16th, 2024`:** Among others, the winning models are officially available in the [MagNet Toolkit](https://github.com/upb-lea/mag-net-hub) now
 * **` Jan. 27th, 2024`:** Publish the submission on GitHub
 
 ## Abstract
