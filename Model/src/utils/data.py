@@ -10,10 +10,10 @@ import numpy as np
 from joblib import delayed, Parallel
 import csv
 
-NEW_MATS_ROOT_PATH = Path.cwd().parent / "data" / "input" / "test"
+NEW_MATS_ROOT_PATH = Path(__file__).parent.parent.parent / "data" / "input" / "test"
 ALL_B_COLS = [f"B_t_{k}" for k in range(1024)]
 ALL_H_COLS = [f"H_t_{k}" for k in range(1024)]
-EXP_CSV_PATH = Path.cwd().parent / "data" / "output" / "experiments_meta.csv"
+EXP_CSV_PATH = Path(__file__).parent.parent.parent / "data" / "output" / "experiments_meta.csv"
 TRIALS_CSV_PATH = EXP_CSV_PATH.parent / "trials_meta.csv"
 TRIALS_CSV_COLS = {
     "experiment_uid": str,
@@ -39,7 +39,7 @@ EXP_CSV_COLS = {
     "tag": str,
     'model_size': int,
 }
-DATA_SOURCE = Path.cwd().parent / "data" / "input" / "raw"
+DATA_SOURCE = EXP_CSV_PATH.parent.parent / "input" / "raw"
 PROC_SOURCE = DATA_SOURCE.parent / "processed"
 PRED_SINK = DATA_SOURCE.parent.parent / "output"
 MODEL_SINK = PRED_SINK.parent / "models"
