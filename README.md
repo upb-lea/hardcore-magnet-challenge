@@ -1,5 +1,6 @@
 <div align="center">
-<h1>MagNet Challenge 2023 Winning Solution (1st Place Model Performance) </h1>
+<h1>MagNet Challenge 2023 Winning Solution</h1>
+<h2>(1st Place Model Performance)</h2>
 <h3>HARDCORE: H-field and power loss estimation for arbitrary waveforms with residual, dilated convolutional neural networks in ferrite cores
 </h3>
 
@@ -12,6 +13,7 @@ Paper: [arXiv 2401.11488](https://arxiv.org/abs/2401.11488)
 </div>
 
 ## Updates
+* **` Mar. 16th, 2024`:** Among others, the winning models are officially available in the [MagNet Toolkit](https://github.com/upb-lea/mag-net-hub) now
 * **` Jan. 27th, 2024`:** Publish the submission on GitHub
 
 ## Abstract
