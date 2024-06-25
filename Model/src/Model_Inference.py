@@ -17,6 +17,7 @@ Material = "Material E"
 test_folder_path = Path.cwd().parent / "data" / "input" / "test" / "Testing"
 dump_folder_path = Path.cwd().parent.parent / "Result"
 
+dump_folder_path.mkdir(exist_ok=True, parents=True)
 # %% Load Dataset
 
 

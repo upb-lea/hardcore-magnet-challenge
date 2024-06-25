@@ -50,6 +50,7 @@ DEBUG_MATERIALS = {"old": ["3C90", "78"], "new": ["A", "B", "C", "D", "E"]}
 TRAIN_ON_NEW_MATERIALS = True
 
 
+
 def construct_tensor_seq2seq(
     df,
     x_cols,
@@ -78,8 +79,10 @@ def construct_tensor_seq2seq(
     orig_freq = X.loc[:, ["freq"]].copy().to_numpy()
     X.loc[:, ["temp", "freq"]] /= np.array([75.0, FREQ_SCALE])
     X.loc[:, "freq"] = np.log(X.freq)
-    other_cols = [c for c in x_cols if c not in ["temp", "freq"]]
-    X.loc[:, other_cols] /= X.loc[:, other_cols].abs().max(axis=0)
+    other_cols = [c for c in x_cols if c not in ["temp", "freq"] and not c.startswith("wav_")]
+    denom = X.loc[:, other_cols].abs().max(axis=0)
+
+    X.loc[:, other_cols] /= denom
     if training_data:
         # add p loss as target (only used as target when predicting p loss directly), must be last column
         X = X.assign(ln_ploss=(np.log(df.ploss) - ln_ploss_mean) / ln_ploss_std)
