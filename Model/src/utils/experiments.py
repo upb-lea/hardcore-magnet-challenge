@@ -28,24 +28,15 @@ def get_bh_integral(df):
       calculate the area within the polygon"""
     # offset polygon into first quadrant
     b, h = (
-        df.loc[:, ALL_B_COLS].to_numpy() + 0.5,  # T
-        df.loc[:, ALL_H_COLS].to_numpy() + 1000,  # A/m
+        df.loc[:, ALL_B_COLS].to_numpy(),  # T
+        df.loc[:, ALL_H_COLS].to_numpy(),  # A/m
     )
-    return (
-        df.freq
-        * 0.5
-        * np.abs(np.sum(b * (np.roll(h, 1, axis=1) - np.roll(h, -1, axis=1)), axis=1))
-    )  # shoelace formula
+    return df.freq * np.trapz(h, b)
 
 def get_bh_integral_from_two_mats(freq, b, h):
     """ b and h are numpy matrices with shape (#samples, #timesteps)"""
-    # offset b and h into first quadrant
-    h_with_offset = h + 1000 # A/m
-    b_with_offset = b + 0.5 # T
-    return freq.ravel() * 0.5 * np.abs(
-        np.sum(b_with_offset * 
-               (np.roll(h_with_offset, 1, axis=1) - np.roll(h_with_offset, -1, axis=1)),
-                axis=1))
+    # h in A/m, b in T
+    return freq.ravel() * np.trapz(h, b)
 
 def get_stratified_fold_indices(df, n_folds):
     """Given a Pandas Dataframe df, return a Pandas Series with the kfold labels for the test set.

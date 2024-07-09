@@ -83,7 +83,7 @@ def load_new_materials(training=True, filter_materials=None):
             )
     else:
         if isinstance(filter_materials, str):
-            filter_materials = [filter_materials]
+            filter_materials = [filter_materials.upper()]
         assert isinstance(
             filter_materials, (list, tuple)
         ), "filter_materials must be list, tuple, str, or None"

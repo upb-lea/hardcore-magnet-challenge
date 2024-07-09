@@ -30,15 +30,15 @@ from utils.data import (
 pd.set_option("display.max_columns", None)
 
 DEBUG = False
-N_SEEDS = 1  # how often should the experiment be repeated with different random init
+N_SEEDS = 3  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 2 if DEBUG else 5000  # how often should the full data set be iterated over
+N_EPOCHS = 2 if DEBUG else 4000  # how often should the full data set be iterated over
 half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = (
     8 if DEBUG else 1
 )  # every n-th sample along the time axis is considered
-FREQ_SCALE = 150_000  # in Hz
-K_KFOLD = 1 if DEBUG else 1  # how many folds in cross validation
+FREQ_SCALE = 150_000.0  # in Hz
+K_KFOLD = 1 if DEBUG else 4  # how many folds in cross validation
 BATCH_SIZE = (
     4 if DEBUG else 64
 )  # how many periods/profiles/measurements should be averaged across for a weight update
@@ -48,7 +48,7 @@ H_COLS = ALL_H_COLS[::SUBSAMPLE_FACTOR]
 H_PRED_COLS = [f"h_pred_{i}" for i in range(1024 // SUBSAMPLE_FACTOR)]
 DEBUG_MATERIALS = {"old": ["3C90", "78"], "new": ["A", "B", "C", "D", "E"]}
 TRAIN_ON_NEW_MATERIALS = True
-
+ 
 
 
 def construct_tensor_seq2seq(
@@ -71,7 +71,7 @@ def construct_tensor_seq2seq(
     assert len(df) > 0, "empty dataframe error"
     # put freq on first place since Architecture expects it there
     x_cols.insert(0, x_cols.pop(x_cols.index("freq")))
-    X = df.loc[:, x_cols]
+    X = df.loc[:, x_cols].astype(np.float64)
     # normalization
     full_b /= b_limit
     if training_data:
@@ -197,7 +197,7 @@ def main(
                 "loss_trends_val_p": np.full((N_EPOCHS, K_KFOLD), np.nan),
                 "model_scripted": [],
                 "model_uids": [],
-                "start_time": pd.Timestamp.now().round(freq="S"),
+                "start_time": pd.Timestamp.now().round(freq="s"),
                 "performance": None,
                 "model_size": None,
             }
@@ -317,6 +317,7 @@ def main(
                     tcn_layer_cfg=None,
                     scalar_layer_cfg=None,
                 )
+
                 loss_h = torch.nn.MSELoss().to(device)
                 if predict_ploss_directly:
                     mdl = LossPredictor(mdl)
@@ -376,8 +377,8 @@ def main(
                     if predict_ploss_directly:
                         h_lim_shuffled = h_limit_fold_torch[indices, :]
                         # loss weighting
-                        p_loss_weight = i_epoch / N_EPOCHS
-                        h_loss_weight = 1.0 - p_loss_weight
+                        p_loss_weight = .5  #i_epoch / N_EPOCHS
+                        h_loss_weight = .5  #1.0 - p_loss_weight
 
                     for i_batch in range(int(np.ceil(n_profiles / BATCH_SIZE))):
                         # extract mini-batch
@@ -558,13 +559,16 @@ if __name__ == "__main__":
         "-m",
         "--material",
         default=None,
-        help="Specific material to train/test on. This will load all data there is on that material regardless"
-        " of training or testing set and trains a model against it.",
+        help="Specific material to train/test on."
     )
+    parser.add_argument('-f', '--full_dataset', action='store_true', 
+                        help="This will load all data there is on material(s) regardless"
+                             " of training or testing set and trains a model against it.")
     args = parser.parse_args()
     device_str = f"cuda:{args.gpu}" if int(args.gpu) >= 0 else f"cpu"
-    if args.material is not None:
+    if args.full_dataset:
         # load all data on the chosen material that can be found under Model/data/raw
+        assert args.material is not None, 'full dataset training requires setting a certain material'
         mat = args.material.upper()
         raw_path = Path(__file__).parent.parent / 'data' / 'input' /'raw'
         df_l = []
@@ -577,9 +581,11 @@ if __name__ == "__main__":
     else:
         # load data set and featurize
         if TRAIN_ON_NEW_MATERIALS:
-            ds = load_new_materials()
+            ds = load_new_materials(filter_materials=args.material)
         else:
             ds = pd.read_pickle(PROC_SOURCE / "ten_materials.pkl.gz")
+            if args.material is not None:
+                ds.query(f"material == {args.material.upper()}").reset_index(drop=True)
 
     # Feature Engineering
     ds = engineer_features(ds)

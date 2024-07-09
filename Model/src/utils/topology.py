@@ -47,7 +47,7 @@ class TemporalBlock(nn.Module):
         super(TemporalBlock, self).__init__()
         padding = ((kernel_size - 1) // 2) * dilation
 
-        self.conv1 = nn.utils.weight_norm(
+        self.conv1 = \
             nn.Conv1d(
                 n_inputs,
                 n_outputs,
@@ -57,12 +57,12 @@ class TemporalBlock(nn.Module):
                 dilation=dilation,
                 padding_mode="circular",
             )
-        )
+        
         self.relu1 = ACTIVATION_FUNCS.get(act_func, nn.Identity)()
         self.dropout1 = nn.Dropout1d(dropout)
         if double_layered:
             self.relu2 = nn.Identity()
-            self.conv2 = nn.utils.weight_norm(
+            self.conv2 = \
                 nn.Conv1d(
                     n_inputs,
                     n_outputs,
@@ -72,7 +72,7 @@ class TemporalBlock(nn.Module):
                     dilation=dilation,
                     padding_mode="circular",
                 )
-            )
+            
             self.dropout2 = nn.Dropout1d(dropout)
             self.net = nn.Sequential(
                 self.conv1,
@@ -245,20 +245,8 @@ class LossPredictor(nn.Module):
         h_pred = self.h_predictor(x_ts, x_scalars).permute(2, 0, 1)
         freq = freq_scale * torch.exp(x_scalars[:, [0]])
         scaled_b = x_ts[:, [-1], :].permute(2, 0, 1)  # globally scaled B curve
-        b_with_offset = b_lim * scaled_b + 5  # arbitrary offset
-        h_with_offset = h_lim * h_pred + 5  # arbitrary offset
-        ploss_pred = (
-            freq
-            * (0.5 + 0.1*self.post_processor(x_scalars))
-            * torch.abs(
-                torch.sum(
-                    b_with_offset
-                    * (
-                        torch.roll(h_with_offset, 1, dims=0)
-                        - torch.roll(h_with_offset, -1, dims=0)
-                    ),
-                    dim=0,
-                )
-            )
-        )  # shoelace formula, polygon area
-        return torch.log(ploss_pred), h_pred
+        ploss_pred = freq * b_lim * h_lim * torch.trapz(h_pred, scaled_b, dim=0) # trapezoidal formula
+        residual_correction = self.post_processor(x_scalars)
+        log_ploss_pred = torch.log(torch.clip(ploss_pred, 1e-12, None)).detach()
+        log_ploss_pred_corrected = log_ploss_pred * (1 + 0.1* residual_correction)
+        return log_ploss_pred_corrected, h_pred
