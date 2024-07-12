@@ -208,7 +208,7 @@ def bookkeeping(logs, debug=False, experiment_info=None):
     print("Write models as jit-script to disk..")
     seed_learning_trends_l = []
     trials_info_l = []
-    end_date = pd.Timestamp.now().round(freq="S")
+    end_date = pd.Timestamp.now().round(freq="s")
     for mat_lbl, seed_logs_l in mat_logs.items():
         for seed_i, seed_log in enumerate(seed_logs_l):
             n_folds = len(seed_log["model_scripted"])

@@ -7,6 +7,7 @@ from tqdm import trange
 import torch
 from torchinfo import summary as ti_summary
 import random
+from joblib import Parallel, delayed
 from uuid import uuid4
 import argparse
 
@@ -30,10 +31,10 @@ from utils.data import (
 pd.set_option("display.max_columns", None)
 
 DEBUG = False
-N_SEEDS = 3  # how often should the experiment be repeated with different random init
+N_SEEDS = 4  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 2 if DEBUG else 4000  # how often should the full data set be iterated over
-half_lr_at = [int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
+N_EPOCHS = 2 if DEBUG else 5_000  # how often should the full data set be iterated over
+reduce_lr_at = [int(N_EPOCHS * 0.5), int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = (
     8 if DEBUG else 1
 )  # every n-th sample along the time axis is considered
@@ -377,8 +378,8 @@ def main(
                     if predict_ploss_directly:
                         h_lim_shuffled = h_limit_fold_torch[indices, :]
                         # loss weighting
-                        p_loss_weight = .5  #i_epoch / N_EPOCHS
-                        h_loss_weight = .5  #1.0 - p_loss_weight
+                        p_loss_weight = i_epoch / N_EPOCHS
+                        h_loss_weight = 1.0 - p_loss_weight
 
                     for i_batch in range(int(np.ceil(n_profiles / BATCH_SIZE))):
                         # extract mini-batch
@@ -480,16 +481,16 @@ def main(
                     if val_loss_h is not None:
                         with torch.no_grad():
                             if predict_ploss_directly:
-                                pbar_str = f"Loss h {train_loss_h.cpu().item():.2e} | val loss h {val_loss_h if val_loss_h is not None else -1.0:.2e} | Loss p {train_loss_p.cpu().item():.2e}"
+                                pbar_str = f"H {train_loss_h.cpu().item():.2e} | val H {val_loss_h if val_loss_h is not None else -1.0:.2e} | P {train_loss_p.cpu().item():.2e} | val P {val_loss_p if val_loss_p is not None else -1.0:.2e}"
                             else:
                                 pbar_str = f"Loss {train_loss_h.cpu().item():.2e} | val loss {val_loss_h if val_loss_h is not None else -1.0:.2e}"
 
                     pbar.set_postfix_str(pbar_str)
 
-                    if half_lr_at is not None:
-                        if i_epoch in half_lr_at:
+                    if reduce_lr_at is not None:
+                        if i_epoch in reduce_lr_at:
                             for group in opt.param_groups:
-                                group["lr"] *= 0.75
+                                group["lr"] *= 0.9
 
                     if i_epoch == N_EPOCHS - 1:  # last epoch
                         with torch.inference_mode():  # take last epoch's model as best model
@@ -535,11 +536,11 @@ def main(
         print(f"Parallelize over {n_seeds} seeds with {N_JOBS} processes..")
         # start experiments in parallel processes
         # list of dicts
-        # mat_log = prll(delayed(run_dyn_training)(s) for s in range(start_seed, n_seeds + start_seed))
-        # logs_d[material_lbl] = {'performance': pd.DataFrame.from_dict([m['performance'] for m in mat_log]),
-        #                        'misc': [m for m in mat_log]}
+        #with Parallel(n_jobs=N_JOBS, temp_folder='/tmp') as prll:   
+        #    mat_log = prll(delayed(run_dyn_training)(s) for s in range(start_seed, n_seeds + start_seed))
+        #    logs_d['results_per_material'][material_lbl] = mat_log
 
-        # Note that parallel processes won't work in conjunction with a GPU (memory won't be released with Pytorch)
+        
         logs_d["results_per_material"][material_lbl] = [
             run_dyn_training(i) for i in range(start_seed, n_seeds + start_seed)
         ]
