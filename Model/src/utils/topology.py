@@ -219,7 +219,7 @@ class TCNWithScalarsAsBias(nn.Module):
         y = y + x_ts[:, [0], :]  # residual connection to per-profile scaled B curve
 
         # subtract mean along time domain
-        y = y - y.mean(dim=-1).unsqueeze(-1)
+        #y = y - y.mean(dim=-1).unsqueeze(-1)
         return y
 
 
@@ -235,10 +235,10 @@ class LossPredictor(nn.Module):
         super().__init__()
         self.h_predictor = h_predictor
         self.post_processor = nn.Sequential(
-            nn.Linear(self.h_predictor.num_input_scalar, 8), 
+            nn.Linear(self.h_predictor.num_input_scalar + 1, 8), 
             nn.Tanh(),
             nn.Linear(8, 1),
-            nn.Tanh()
+            #nn.Tanh()
         )
 
     def forward(self, x_ts, x_scalars, b_lim, h_lim, freq_scale):
@@ -246,7 +246,8 @@ class LossPredictor(nn.Module):
         freq = freq_scale * torch.exp(x_scalars[:, [0]])
         scaled_b = x_ts[:, [-1], :].permute(2, 0, 1)  # globally scaled B curve
         ploss_pred = freq * b_lim * h_lim * torch.trapz(h_pred, scaled_b, dim=0) # trapezoidal formula
-        residual_correction = self.post_processor(x_scalars)
-        log_ploss_pred = torch.log(torch.clip(ploss_pred, 1e-12, None)).detach()
-        log_ploss_pred_corrected = log_ploss_pred * (1 + 0.1* residual_correction)
+        
+        log_ploss_pred = torch.log(torch.clip(ploss_pred , 1e-12, None))#.detach()
+        residual_correction = self.post_processor(torch.cat([x_scalars, (log_ploss_pred - 12) / 4], dim=1) )
+        log_ploss_pred_corrected = log_ploss_pred + residual_correction
         return log_ploss_pred_corrected, h_pred
