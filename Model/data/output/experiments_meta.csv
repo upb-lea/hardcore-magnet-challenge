@@ -31,3 +31,4 @@ c9cfe,False,1,64,1,True,10000,final model attempt 0,1755
 89733,False,1,64,4,True,4000,sidearm is residual branch,1734
 ef5cc,False,1,64,4,True,10000,"h&p detached, no bias subtraction, sidearm is additive",1742
 b5226,False,1,64,4,True,5000,"no bias subtraction, sidearm is additive",1742
+314de,False,1,64,4,True,5000,"H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalars, P: n_scalars+1 -> 8 -> 1",1742
