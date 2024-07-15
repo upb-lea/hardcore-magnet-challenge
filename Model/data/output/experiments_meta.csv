@@ -33,3 +33,5 @@ ef5cc,False,1,64,4,True,10000,"h&p detached, no bias subtraction, sidearm is add
 b5226,False,1,64,4,True,5000,"no bias subtraction, sidearm is additive",1742
 314de,False,1,64,4,True,5000,"H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalars, P: n_scalars+1 -> 8 -> 1",1742
 68a16,False,1,64,4,True,5000,"H_ts: 8 -> 4 -> 1, H_s: 8, P: n_scalars+1 -> 8 -> 1",906
+cd184,False,1,64,4,True,5000,"H_ts: 4 -> 1, H_s: 4, P: n_scalars+1 -> 8 -> 1",382
+ebf34,False,1,64,4,True,5000,"H_ts: 4 -> 1, H_s: 2, P: n_scalars+1 -> 1",258
