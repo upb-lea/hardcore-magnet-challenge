@@ -31,4 +31,15 @@ c9cfe,False,1,64,1,True,10000,final model attempt 0,1755
 89733,False,1,64,4,True,4000,sidearm is residual branch,1734
 ef5cc,False,1,64,4,True,10000,"h&p detached, no bias subtraction, sidearm is additive",1742
 b5226,False,1,64,4,True,5000,"no bias subtraction, sidearm is additive",1742
+9df83,False,1,64,4,True,5000,"H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalars -> 8, P: n_scalars+1 -> 8 -> 1",1838
 314de,False,1,64,4,True,5000,"H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalars, P: n_scalars+1 -> 8 -> 1",1742
+68a16,False,1,64,4,True,5000,"H_ts: 8 -> 4 -> 1, H_s: 8, P: n_scalars+1 -> 8 -> 1",906
+cd184,False,1,64,4,True,5000,"H_ts: 4 -> 1, H_s: 4, P: n_scalars+1 -> 8 -> 1",382
+ebf34,False,1,64,4,True,5000,"H_ts: 4 -> 1, H_s: 2, P: n_scalars+1 -> 1",258
+07cd3,False,1,64,4,True,5000,"H_ts: n_scalars +4 -> 4 -> 1, H_s: n_scalars, P: n_scalars+1-> 4 -> 1",1460
+436f3,False,1,64,4,True,5000,"H_ts: n_scalars+6 -> 12 -> 1, H_s: n_scalars -> 12, P: n_scalars+1 -> 12 -> 1",3800
+5ae98,False,1,64,1,True,10000,"final: H_ts: n_scalars +4 -> 4 -> 1, H_s: n_scalars, P: n_scalars+1-> 4 -> 1",1460
+ff6c5,False,1,64,1,True,10000,"final: H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalars -> 8, P: n_scalars+1 -> 8 -> 1",1838
+da6f5,False,1,64,4,True,5000,"H_ts: n_scalars+10 -> 24 -> 1, H_s: n_scalars -> 16, P: n_scalars+1 -> 24 -> 1",6404
+c15ca,False,1,64,1,True,10000,"final: H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalars, P: n_scalars+1 -> 8 -> 1",1742
+40ce5,False,1,64,1,True,10000,"final: H_ts: 8 -> 4 -> 1, H_s: 8, P: n_scalars+1 -> 8 -> 1",906
