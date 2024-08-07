@@ -46,3 +46,5 @@ c15ca,False,1,64,1,True,10000,"final: H_ts: n_scalars+1 -> 8 -> 1, H_s: n_scalar
 a7f70,False,1,64,1,True,10000,"final: H_ts: 4 -> 1, H_s: 4, P: n_scalars+1 -> 8 -> 1",382
 f653e,False,1,64,1,True,10000,"final: H_ts: 4 -> 1, H_s: 2, P: n_scalars+1 -> 1",258
 a31d2,False,1,64,1,True,10000,"final: H_ts: n_scalars+10 -> 12 -> 1, H_s: n_scalars -> 12, P: n_scalars+1 -> 12 -> 1",3800
+58bdf,False,1,64,1,True,10000,"final: H_ts: n_scalars+10 -> 24 -> 1, H_s: n_scalars -> 16, P: n_scalars+1 -> 24 -> 1",6404
+5ec5c,False,1,64,1,False,10000,"final H-only: H_ts: n_scalars+10 -> 24 -> 1, H_s: n_scalars -> 16",6067

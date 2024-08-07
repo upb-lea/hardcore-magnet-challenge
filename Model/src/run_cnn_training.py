@@ -31,15 +31,15 @@ from utils.data import (
 pd.set_option("display.max_columns", None)
 
 DEBUG = False
-N_SEEDS = 4  # how often should the experiment be repeated with different random init
+N_SEEDS = 1  # how often should the experiment be repeated with different random init
 N_JOBS = 1  # how many processes should be working
-N_EPOCHS = 2 if DEBUG else 5_000  # how often should the full data set be iterated over
+N_EPOCHS = 2 if DEBUG else 10_000  # how often should the full data set be iterated over
 reduce_lr_at = [int(N_EPOCHS * 0.5), int(N_EPOCHS * 0.8)]  # halve learning rate after these many epochs
 SUBSAMPLE_FACTOR = (
     8 if DEBUG else 1
 )  # every n-th sample along the time axis is considered
 FREQ_SCALE = 150_000.0  # in Hz
-K_KFOLD = 1 if DEBUG else 4  # how many folds in cross validation
+K_KFOLD = 1 if DEBUG else 1  # how many folds in cross validation
 BATCH_SIZE = (
     4 if DEBUG else 64
 )  # how many periods/profiles/measurements should be averaged across for a weight update

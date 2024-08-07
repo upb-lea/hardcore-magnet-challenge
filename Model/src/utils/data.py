@@ -47,13 +47,13 @@ MODEL_SINK = PRED_SINK.parent / "models"
 
 def load_material_csv_files_and_generate_pandas_df(mat_folder_path, training=True, material=None):
     mat_lbl = material or mat_folder_path.name.split(" ")[-1]
-    b_df = pd.read_csv(mat_folder_path / "B_Field.csv", header=0, names=ALL_B_COLS)
-    freq = pd.read_csv(mat_folder_path / "Frequency.csv", header=0)
-    temp = pd.read_csv(mat_folder_path / "Temperature.csv", header=0)
+    b_df = pd.read_csv(mat_folder_path / "B_Field.csv", header=None, names=ALL_B_COLS)
+    freq = pd.read_csv(mat_folder_path / "Frequency.csv", header=None)
+    temp = pd.read_csv(mat_folder_path / "Temperature.csv", header=None)
 
     if training:
-        h_df = pd.read_csv(mat_folder_path / "H_Field.csv", header=0, names=ALL_H_COLS)
-        ploss = pd.read_csv(mat_folder_path / "Volumetric_Loss.csv", header=0)
+        h_df = pd.read_csv(mat_folder_path / "H_Field.csv", header=None, names=ALL_H_COLS)
+        ploss = pd.read_csv(mat_folder_path / "Volumetric_Loss.csv", header=None)
         return pd.concat([b_df, h_df], axis=1).assign(
             freq=freq, temp=temp, ploss=ploss, material=mat_lbl
         )
