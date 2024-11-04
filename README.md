@@ -8,11 +8,13 @@
 
 [Paderborn University](https://www.uni-paderborn.de/en/), [Dept. of Power Electronics and Electrical Drives](https://ei.uni-paderborn.de/en/lea)
 
-Paper: [arXiv 2401.11488](https://arxiv.org/abs/2401.11488)
+Paper: [IEEE Transactions on Power Electronics](https://ieeexplore.ieee.org/document/10738458)
+Paper (Preprint): [arXiv 2401.11488](https://arxiv.org/abs/2401.11488)
 
 </div>
 
 ## Updates
+* **` Nov. 4th, 2024`:** IEEE Transactions on Power Electronics paper available
 * **` Mar. 16th, 2024`:** Among others, the winning models are officially available in the [MagNet Toolkit](https://github.com/upb-lea/mag-net-hub) now
 * **` Jan. 27th, 2024`:** Publish the submission on GitHub
 
